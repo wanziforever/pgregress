@@ -1,1 +1,6 @@
 *.pyc
+data/*/*.bak
+__pycache__
+*tmp*
+*.out
+*.log

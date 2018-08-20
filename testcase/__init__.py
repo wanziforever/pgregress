@@ -9,12 +9,16 @@ class TestCase(object):
     """Test case constructor, parse the test case spec file content,
     and output content with command one my one which will be executed
     by command execution tool.
+
+    Args:
+      path: str, the absoluste path of the testcase
+      name: str, the name of the testcase
+      
     """
-    def __init__(self, profile, filename):
-        self.profile = profile
-        self.filename = filename
-        self.path = os.path.join(self.profile.path, filename)
-        self.name = os.path.splitext(filename)[0]
+
+    def __init__(self, path):
+        self.path = path
+        self.name = os.path.basename(os.path.splitext(self.path)[0])
         self._file_content = ''
         self._command_pos = -1
         self._structure = None

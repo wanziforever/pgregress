@@ -1,0 +1,10 @@
+# there is no commit operation for a setup procedure
+# there should be a step name dumplication check 
+# there should be a dry run mode
+# use psql to connect the port and check whether there is a postgres server running
+
+
+
+
+
+ PATH="/mnt/study/pg/code/postgresql-11beta2/tmp_install/mnt/study/pg/installation/bin:$PATH" LD_LIBRARY_PATH="/mnt/study/pg/code/postgresql-11beta2/tmp_install/mnt/study/pg/installation/lib:$LD_LIBRARY_PATH" ../../../src/test/isolation/pg_isolation_regress --temp-instance=./tmp_check_iso --inputdir=. --outputdir=output_iso --bindir=  timeouts

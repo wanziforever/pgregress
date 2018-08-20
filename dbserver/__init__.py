@@ -1,7 +1,12 @@
+"""database server definition, the server is the target testing server
+"""
+
 import os
 import re
 import logging
+import time
 import subprocess
+import threading
 
 logger = logging.getLogger('DBServer')
 _PORT = 5433
@@ -23,11 +28,14 @@ def set_parameter_in_conf_file(conf, name, value):
     ..note:
        for simple, the code will not uncomment the parameter
 
-    Args:
-      conf: str, the path of the configuration file
-      name: str, parameter name to change or add
-      value: int/str, parameter value to change or add
-      
+    :type conf: str
+    :param conf: the path of the configuration file
+    
+    :type name: str
+    :param name: parameter name to change or add
+    
+    :type value: int/str
+    :param value: parameter value to change or add
     """
     logger.debug("set parameter %s with value %s" % (name, value))
     lines = []
@@ -58,25 +66,44 @@ def set_parameter_in_conf_file(conf, name, value):
     with open(conf, 'w') as fd:
         fd.write("\n".join(newlines))
 
+def capture_server_output(proc, logfile):
+    """ this is called by a new thread, so that it can capture the log
+    with blocking the main thread
+
+    ..note:
+      currently not taking care of the thread end running staffing
+
+    :type proc: :class:`subprocess.Popen`
+    :param proc: return by subprocess.Popen function call
+    
+    :type logfile: str
+    :param logfile: the log absolute file path
+    """
+    logger.debug("capture log to %s" % logfile)
+    with open(logfile, 'a') as fd:
+        for line in iter(proc.stdout.readline, ''):
+            fd.write('%s' % line)
 
 class DBServer(object):
     """database server instance management
     
-    Args:
-      data_path: str, the directory for the database data location
-      pid: int, the database init process id
-
     ..note:
       two static methods is used to initialize a database data, after
       call start to start a database service, return a server real
       object.
+
+    :type data_path: str
+    :param data_path: the directory for the database data location
+    
+    :type pid: int
+    :param pid: the database init process id
     """
     def __init__(self, popen, port):
         self._popen = popen
         self._port = port
         if not self.is_running():
             logger.debug("the DBServer fail to start")
-            raise Excpetion("DBServer fail to start")
+            raise Exception("DBServer fail to start")
 
     @staticmethod
     def set_dbconf(data_path, **params):
@@ -84,9 +111,11 @@ class DBServer(object):
         a case, let's design it in future, and now i just simply set it
         hard code here, now i only want to change the port
 
-        Args:
-          data_path: str, the directory of the database data store
-          params: dict, the parameters and values to change or add
+        :type data_path: str
+        :param data_path: the directory of the database data store
+        
+        :type params: dict
+        :param params: the parameters and values to change or add
         """
         new_port = _PORT
         conf_file = os.path.join(data_path, 'postgresql.conf')
@@ -95,11 +124,10 @@ class DBServer(object):
 
     @staticmethod
     def initDB(data_path):
-        """
-        initialize the data store for a database
+        """initialize the data store for a database
 
-        Args:
-          data_path: str, the directory of the database data store
+        :type data_path: str
+        :param data_path: the directory of the database data store
         """
         bin_path = get_installation_bin_path()
         initdb = os.path.join(bin_path, 'initdb')
@@ -111,6 +139,7 @@ class DBServer(object):
             [initdb, '-D', data_path, '--no-clean', '--no-sync',
              '--debug', '--no-locale'],
             env=env, stdout=subprocess.PIPE,
+            universal_newlines=True,
             stderr=subprocess.PIPE)
         if child.returncode != 0:
             logger.debug(child.args)
@@ -118,12 +147,12 @@ class DBServer(object):
             logger.debug(child.stderr)
             # logger.error(child.stderr)
             raise Exception(
-                "fail to do initdb for (%s)" % child.stderr.decode('ascii')
+                "fail to do initdb for (%s)" % child.stderr
                 )
         logger.debug(
             'database initialize successfully under %s' % data_path
             )
-        logger.debug(child.stdout.decode('ascii'))
+        logger.debug(child.stdout)
 
     @staticmethod
     def get_postmaster_status(data_path):
@@ -131,15 +160,14 @@ class DBServer(object):
         status of the postgres, and check wether the pid is a active
         process.
 
-        Args:
-          data_path: str, the database instance data directory path
-
-        Returns:
-          pid: int, the process id of the init process of postgres
-          status: str, status string of the postgres, running, or deaded
-
         ..note:
           if the postmaster.pid file is not exist, just return None, None
+
+        :type data_path: str
+        :param data_path: the database instance data directory path
+
+        :rtype: list
+        :returns: process id and its status(running or dead)
         """
         postmaster_file = os.path.join(data_path, 'postmaster.pid')
         if not os.path.exists(postmaster_file):
@@ -156,20 +184,54 @@ class DBServer(object):
         return 1231, 'running'
     
     @staticmethod
-    def start(data_path):
+    def start(data_path, log_path=None):
+        """start the postgresql server
+
+        :type data_path: str
+        :param data_path: the data path that server will start base on
+
+        :type log_path: str
+        :param log_path: the log file absolute path
+
+        :rtype: :class:`DBServer`
+        :returns: a server instance who will accept the test
+        """
         logger.debug('starting a PostgreSQL server instance')
         bin_path = get_installation_bin_path()
         postgres = os.path.join(bin_path, 'postgres')
         lib_path = get_installation_lib_path()
-        logger.debug("DBServer::start() bin: %s, lib: %s"
-                     % (postgres, lib_path))
+        logger.debug(
+            "DBServer::start() bin: %s, lib: %s" % (postgres, lib_path)
+            )
+
+        if log_path:
+            logger.debug("log directory: %s" % log_path)
+            
         env = {'LD_LIBRARY_PATH': lib_path}
-        child = subprocess.Popen([postgres, '-D', data_path],
+
+        child = None
+        postgres_cmd = [postgres, '-D', data_path, '-F', '-d', '5']
+        child = subprocess.Popen(postgres_cmd,
+                                 universal_newlines=True,
                                  env=env, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE)
+                                 stderr=subprocess.STDOUT)
+
+        if log_path:
+            t = threading.Thread(target=capture_server_output,
+                                 args=(child, "%s/postmaster.log"%log_path))
+            t.start()
+
+        # sleep for a very short time to wait the process start at
+        # os level
+        time.sleep(0.2)
+        
         return DBServer(child, _PORT)
 
     def stop(self):
+        """simply use kill signal to kill the postgresql server, without
+        taking care the data loss, we will finish the test case, and will
+        not use the data for ever.
+        """
         self._popen.kill()
         logger.debug('server is stopped')
 
@@ -179,15 +241,22 @@ class DBServer(object):
         although the process of the database server may be up, but it
         maybe cannot accept message, this function use psql to send
         message to check whether the server is really can handle message
+
+        :rtype: Boolen
+        :returns: whether the database server is running and can accept
+                  message (means psql can connect to)
         """
         if not self.is_running():
-            logger.debug('PostgreSQL process is not alive')
-            return False
+            logger.debug(
+                'PostgreSQL Init process fail for %s' % self.exit_code()
+                )
+            logger.debug(self._popen.stderr.read())
+            raise Exception("DBServer fail to start")
         
         bin_path = get_installation_bin_path()
         psql = os.path.join(bin_path, 'psql')
         lib_path = get_installation_lib_path()
-        logger.debug("DBServer::start() bin: %s, lib: %s"
+        logger.debug('DBServer::is_ready() bin: %s, lib: %s'
                      % (psql, lib_path))
         env = {'LD_LIBRARY_PATH': lib_path}
         cmd = " ".join([
@@ -197,19 +266,24 @@ class DBServer(object):
             cmd, shell=True, env=env, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
             )
-        #cmd = " ".join([psql, '-p', str(_PORT), 'postgres',
-        #                '<', '/dev/null', '>', '/dev/null 2>&1'])
-        #print(cmd)
+        
         if child.returncode != 0:
             logger.debug("psql connect fail for reason %s"
-                         % child.stderr.decode())
+                         % child.stderr)
             return False
 
         return True
     
     def is_running(self):
-        """PostgreSQL process is running"""
+        """PostgreSQL process is running
+
+        :rtype: Boolen
+        :returns: whetther the server is running
+        """
         return self._popen.poll() is None
+
+    def exit_code(self):
+        return self._popen.poll()
 
     @staticmethod
     def removeDB(data_path):

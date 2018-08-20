@@ -1,6 +1,5 @@
 import os
 import logging
-from testcase import TestCase
 
 logger = logging.getLogger('profile')
 
@@ -14,23 +13,22 @@ class Profile(object):
     """a test case holder, this is mainly used for a test case management,
     equal to a feather holding some test cases
 
-    Args:
-        path: str, the profile directory which to hold its test cases
-        instruction: str, the profile instrction description strings
-        cases: TestCase, the test case which is holded under this profile
-        
+    :type path: str
+    :param path: the profile directory which to hold its test cases
+    
+    :type instruction: str
+    :param instruction: the profile instrction description strings
     """
     def __init__(self, directory):
         self.path = convert_abs_path(directory)
         self.introduction = ""
         self._fill_instruction()
-        self.cases = []
+        self._cases = []
         self._build()
         self._current_case_pos = -1
 
     def _fill_instruction(self):
-        """
-        find a instruction file under the profile directory, if no file
+        """find a instruction file under the profile directory, if no file
         exist, just return empty
         """
         introduction_path = os.path.join(self.path, "introduction")
@@ -42,23 +40,39 @@ class Profile(object):
         with open(introduction_path, 'r') as fd:
             self.introduction = fd.read()
 
+    def reset(self):
+        self._current_case_pos = -1
+
     def next_case(self):
-        if self._current_case_pos + 1 >= len(self.cases):
+        """get the next case in the profile, the object will hold a pointer
+        to the current case, if you want to reset to the beginning, just call
+        reset() function
+        """
+        if self._current_case_pos + 1 >= len(self._cases):
             return None
         self._current_case_pos += 1
-        return self.cases[self._current_case_pos]
+        return self._cases[self._current_case_pos]
 
     def _build(self):
         """find all the test case under the profile directory"""
         for filename in os.listdir(self.path):
             if not filename.endswith('.spec'):
                 continue
-            testcase = TestCase(self, filename)
-            testcase.build()
-            self.cases.append(testcase)
+
+            # not doing case build here, the build was moved to the
+            # testRunner, since runner will be possibly a seperate
+            # tool run in a serpate process, so only pass the case
+            # absolusly path in command line is better then passing
+            # case data in json which is too complict as a command
+            # line argument
+            #testcase = TestCase(self, filename)
+            #testcase.build()
+            
+            full_case_path = os.path.join(self.path, filename)
+            self._cases.append(full_case_path)
 
     def is_end(self):
-        if self._current_case_pos + 1 >= len(self.cases):
+        if self._current_case_pos + 1 >= len(self._cases):
             return True
         return False
 
@@ -66,5 +80,5 @@ class Profile(object):
         logger.info("profile location: %s" % self.path)
         logger.info("instruction: %s" % self.introduction)
         logger.info("cases: ")
-        for case in self.cases:
+        for case in self._cases:
             logger.info(case)
