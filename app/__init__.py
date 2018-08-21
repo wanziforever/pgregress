@@ -110,8 +110,25 @@ class Application(object):
     def _clear_PGServer(self):
         self.server.stop()
         DBServer.removeDB(_DATA_PATH)
+
+    def _start_profile_prompt(self):
+        import datetime
+        now = datetime.datetime.now()
+        print("+----------------------------------------")
+        print(" Profile for %s" % self.profile.path)
+        print(" Start at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
+        print("----------------------------------------+")
+
+    def _end_profile_prompt(self):
+        import datetime
+        now = datetime.datetime.now()
+        print("+----------------------------------------")
+        print(" Profile for %s" % self.profile.path)
+        print(" End at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
+        print("----------------------------------------+")
         
     def run(self):
+        self._start_profile_prompt()
         case = self.profile.next_case()
         while case:
             logger.debug("processing case \n%s" % str(case))
@@ -121,6 +138,7 @@ class Application(object):
             case = self.profile.next_case()
 
         logger.debug("cases run out!")
+        self._end_profile_prompt()
 
     def _start_test(self, testcase):
         from runner import TestRunner
