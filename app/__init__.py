@@ -207,7 +207,12 @@ class Application(object):
         now = datetime.datetime.now()
         print("+----------------------------------------")
         #print(" TestRunner for %s" % testcase)
-        print(" End at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
+        print(" Case end at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
+
+        # duplicate code with _capture_outputs, will enhance it later
+        case_name = os.path.basename(os.path.splitext(testcase)[0])
+        result_file = os.path.join(self._results_dir, case_name+".out")
+        print(" output", result_file)
         print("----------------------------------------+")
 
     def _capture_outputs(self, testcase, out, err):

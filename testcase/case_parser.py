@@ -22,9 +22,20 @@ def p_statement_expression(p):
     if len(p) == 4:
         statements['setup'] = p[1]
 
+def p_comments_block(p):
+    '''comment_block : comment_block COMMENTS
+                   | COMMENTS'''
+    p[0] = "comments"
+
+# actually the comments before setup is for the whole file not only for
+# setup, here is just a temp solution
 def p_setup_statement_expression(p):
-    'setup_statement : SETUP L_LARGEPAREN sqlblock R_LARGEPAREN'
-    p[0] = p[3]
+    '''setup_statement : SETUP L_LARGEPAREN sqlblock R_LARGEPAREN
+                       | comment_block setup_statement'''
+    if len(p) == 5:
+        p[0] = p[3]
+    else:
+        p[0] = p[2]
 
 def p_sqlblock_clause(p):
     '''sqlblock : sqlblock SQLCLAUSE

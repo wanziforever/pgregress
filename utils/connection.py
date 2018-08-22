@@ -213,8 +213,11 @@ class PGAsyncConnection(object):
         while 1:
             if is_timeout:
                 return None, None
-            
-            state = self._conn.poll()
+            try:
+                state = self._conn.poll()
+            except Exception as e:
+                diag = e.diag
+                raise Exception("%s: %s" % (diag.severity, str(e)))
             if state == psycopg2.extensions.POLL_OK:
                 break
             else:
@@ -314,7 +317,6 @@ class PGConnectionManager(object):
         """
         conn = psycopg2.connect(database=database, user=user,
                                 password=password, host=host, port=port)
-        print(type(conn))
         return PGConnection(conn)
         
     @staticmethod

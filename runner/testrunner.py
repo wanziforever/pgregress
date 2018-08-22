@@ -43,6 +43,7 @@ class TestRunner(object):
         self._sessions = {}
         self._waitings = []
         self._backend_pids = []
+        self._errorsteps = {} # {step: errormsg}
 
     def run(self, dry_run=False):
         """TestRunner execution interface, it will control the testcase
@@ -224,7 +225,11 @@ class TestRunner(object):
         # current waiting list, and may make some waiting sessions to get
         # through, here need to release them
         if oldstep:
+            # clear the old error step message to just monitor the very
+            # recent step error message
+            self._errorsteps = {}
             self._try_complete_waiting_steps()
+            self._report_multiple_error_messages(oldstep)
 
         # we support more than one sqls in one step, the sqls were seperated
         # by `;` in one line of step definition, here just join the sqls into
@@ -245,7 +250,9 @@ class TestRunner(object):
 
         # after execute a step, check wether it can make some waiting
         # steps to go through
+        self._errorsteps = {}
         self._try_complete_waiting_steps()
+        self._report_multiple_error_messages(step)
 
         if wait:
             self._waitings.append(step)
@@ -342,8 +349,10 @@ class TestRunner(object):
             try:
                 descriptions, rows = dbsession.getResult(block_time)
             except Exception as e:
-                print("step %s: %s" % (step['step_tag'], step['sqls']))
-                print(str(e))
+                # failure is also a complete branch, and print complete
+                print("step %s: <... completed>" % step['step_tag'])
+                self._errorsteps[step['step_tag']] = str(e)
+
                 return False
 
             # the getResult may return a empty result, this is different
@@ -486,14 +495,36 @@ class TestRunner(object):
             return
         
         for desc in descriptions:
-            print(desc, end=' ')
+            print("%-15s" % desc, end=' ')
+
+        print()
         print()
 
         for row in rows:
             for t in row:
-                print(t, end=' ')
+                print("%-15s" % t, end=' ')
             print()
-        print()
+
+    def _report_multiple_error_messages(self, step):
+        """report the errors during the step processing
+
+        since the error maybe happened during two session block case,
+        so we try to print all the errors received from database backend
+        for all the steps which has relations.
+        """
+        tag = step['step_tag']
+        extratags = [etag for etag in self._errorsteps.keys() if etag != tag]
+        all_tags = [tag]
+        all_tags.extend(extratags)
+
+        if tag in self._errorsteps:
+            print("error in steps %s: %s"
+                  % (" ".join(all_tags), self._errorsteps[tag]))
+
+        for etag in extratags:
+            print("error in steps %s: %s"
+                  % (" ".join(all_tags), self._errorsteps[etag]))
+        
 
 def usage():
     """ show the usage of the tool, including the arguments

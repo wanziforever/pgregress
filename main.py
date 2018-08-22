@@ -24,7 +24,6 @@ def all_profiles():
     """
     dirs = []
     for f in os.listdir(test_data_dir):
-        logger.debug("found %s" % f)
         if f.startswith('.'):
             continue
 
