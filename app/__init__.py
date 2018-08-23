@@ -53,15 +53,15 @@ class Application(object):
         self.profile = profile
         self._outputs_dir = os.path.join(profile.path, 'outputs')
         self._results_dir = os.path.join(self._outputs_dir, 'results')
+        self._expected_dir = os.path.join(profile.path, 'expected')
         self._logs_dir = os.path.join(self._outputs_dir, 'logs')
         self._maint_session = None
         self._sessions = {}
         self.server = None
 
-        self._make_directories()
         self._clear_logs()
 
-    def _make_directories(self):
+    def _check_directories(self):
         """prepare the required directories
         """
         if self._outputs_dir:
@@ -72,6 +72,14 @@ class Application(object):
 
         if self._logs_dir:
             create_directory(self._logs_dir)
+
+        if self._expected_dir:
+            if not os.path.exists(self._expected_dir):
+                raise Exception("cannot find the expected directory")
+
+    def _prepare_schedule(self):
+        """test profile can have a schedule file to control
+        """
 
     def _clear_logs(self):
         """clear the postmaster log"""
@@ -110,6 +118,8 @@ class Application(object):
     def _clear_PGServer(self):
         self.server.stop()
         DBServer.removeDB(_DATA_PATH)
+        if DBServer.check_database_data_exist(_DATA_PATH):
+            raise Exception("fail to remove the DB data")
 
     def _start_profile_prompt(self):
         import datetime
@@ -129,6 +139,8 @@ class Application(object):
         
     def run(self):
         self._start_profile_prompt()
+        self._check_directories()
+
         case = self.profile.next_case()
         while case:
             logger.debug("processing case \n%s" % str(case))

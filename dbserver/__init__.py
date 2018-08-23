@@ -103,6 +103,9 @@ class DBServer(object):
         self._port = port
         if not self.is_running():
             logger.debug("the DBServer fail to start")
+            logger.debug(
+                'PostgreSQL Init process fail for %s' % self.exit_code()
+                )
             raise Exception("DBServer fail to start")
 
     @staticmethod
@@ -227,12 +230,28 @@ class DBServer(object):
         
         return DBServer(child, _PORT)
 
-    def stop(self):
+    def stop(self, wait=True):
         """simply use kill signal to kill the postgresql server, without
         taking care the data loss, we will finish the test case, and will
         not use the data for ever.
+
+        a wait was involved because the stop will take some time, and auto
+        tool may start a new process, and that time the last instance was
+        not totally remove in the OS.
+
+        :type wait: Boolen
+        :param wait: indicate wehter need to double check the db is indeed
+                     stop, if yes, the function will wait until the process
+                     exist
         """
         self._popen.kill()
+        
+        if wait is False:
+            return
+
+        while self.is_running():
+            time.sleep(1)
+            
         logger.debug('server is stopped')
 
     def is_ready(self):
@@ -292,3 +311,22 @@ class DBServer(object):
             )
         import shutil
         shutil.rmtree(data_path)
+
+    @staticmethod
+    def check_database_data_exist(data_path):
+        """find out is there any file exists in data directory
+
+        :rtype: Boolen
+        :returns: indicate is there any file exist
+        """
+        if not os.path.isdir(data_path):
+            return False
+
+        exist = False
+        # if there is hidden file, also treate it as True
+        for f in os.listdir(data_path):
+            if f == '.' or f== '..':
+                continue
+            exist = True
+
+        return exist
