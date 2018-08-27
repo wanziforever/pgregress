@@ -77,10 +77,6 @@ class Application(object):
             if not os.path.exists(self._expected_dir):
                 raise Exception("cannot find the expected directory")
 
-    def _prepare_schedule(self):
-        """test profile can have a schedule file to control
-        """
-
     def _clear_logs(self):
         """clear the postmaster log"""
         logfile = "%s/postmaster.log" % self._logs_dir
@@ -138,26 +134,116 @@ class Application(object):
         print("----------------------------------------+")
         
     def run(self):
+        """base the profile configration, start the test
+        """
         self._start_profile_prompt()
         self._check_directories()
 
-        case = self.profile.next_case()
-        while case:
-            logger.debug("processing case \n%s" % str(case))
-            
-            self._start_test(case)
-            
+        if self.profile.use_schedule():
+            schedule = self.profile.schedule()
+            batch = schedule.next_batch()
+
+            while batch:
+                if batch.len() > 1:
+                    self._start_batch(batch)
+                else:
+                    self._start_test(batch.tests()[0])
+                batch = schedule.next_batch()
+        else:
+
             case = self.profile.next_case()
+            while case:
+                self._start_test(case)
+                case = self.profile.next_case()
 
         logger.debug("cases run out!")
         self._end_profile_prompt()
 
-    def _start_test(self, testcase):
+    def _start_batch(self, batch):
+        """execute a batch of test cases parallelly
+
+        if there is on one test case in the batch, just run it singlly
+        """
+        def start_prompt():
+            import datetime
+            now = datetime.datetime.now()
+            print("----------start batch of test------------")
+            print(" Start at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
+            for test in batch.tests():
+                print("  %s" % test.name())
+            print("-----------------------------------------")
+
+        def end_prompt(results):
+            import datetime
+            now = datetime.datetime.now()
+            print("----------end batch of test--------------")
+            print(" End at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
+            tests = batch.tests()
+            num = len(tests)
+            for i in range(num):
+                result = "ok" if results[i] is True else "fail"
+                print("  %s ... %s" % (tests[i].name(), result))
+            print("-----------------------------------------")
+
+        start_prompt()
+
         from runner import TestRunner
-        
         self._make_PGServer()
 
-        self._testrunner_start_prompt(testcase)
+        import subprocess
+        processes = []
+
+        for case in batch.tests():
+            child = subprocess.Popen(
+                ['python', '-u', 'runner/testrunner.py', case.path()],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                universal_newlines=True
+                )
+        
+            result_file = os.path.join(self._results_dir,
+                                       case.name()+".out")
+
+            t = threading.Thread(target=capture_runner_output,
+                                 args=(child, result_file, False))
+            t.start()
+            processes.append(child)
+
+        for child in processes:
+            child.wait()
+
+        diff_results = self._make_many_diff(batch.tests())
+        
+        self._clear_PGServer()
+
+        end_prompt(diff_results)
+        
+    def _start_test(self, testcase):
+        """run the test case singly, one by one
+        """
+        logger.debug("processing case \n%s" % str(testcase))
+
+        def start_prompt():
+            import datetime
+            now = datetime.datetime.now()
+            print("+----------------------------------------")
+            print(" TestRunner for %s" % testcase.name())
+            print(" Start at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
+            print("----------------------------------------+")
+
+        def end_prompt(result):
+            import datetime
+            now = datetime.datetime.now()
+            print("+----------------------------------------")
+            #print(" TestRunner for %s" % testcase)
+            print(" Case end at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
+            result = "ok" if result else "fail"
+            print("  %s ... %s" % (testcase.name(), result))
+            print("----------------------------------------+")
+            
+        from runner import TestRunner
+        self._make_PGServer()
+        
+        start_prompt()
         
         # here why we want to run the testcase in a seperate process is
         # to capture the pure output of the testcase runner. run testcase
@@ -182,50 +268,27 @@ class Application(object):
         # method instead.
         import subprocess
         child = subprocess.Popen(
-            ['python', '-u', 'runner/testrunner.py', testcase],
+            ['python', '-u', 'runner/testrunner.py', testcase.path()],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             universal_newlines=True
             )
         
-        case_name = os.path.basename(os.path.splitext(testcase)[0])
-        result_file = os.path.join(self._results_dir, case_name+".out")
+        result_file = os.path.join(self._results_dir,
+                                   testcase.name()+".out")
         # Popen communicate is not good, since it will block until the
         # the runner finish and then we can get the output, here we use
         # a thread to monitor the runner tool, and print the stdout
         # content to screen and result file in real time
         t = threading.Thread(target=capture_runner_output,
-                             args=(child, result_file))
+                             args=(child, result_file, False))
         t.start()
         child.wait()
+
+        diff_result = self._make_diff(testcase)
         
-        self._testrunner_end_prompt(testcase)
-        
-        # self._capture_outputs(testcase,
-        #                       child.stdout.decode('ascii'),
-        #                       child.stderr.decode("ascii"))
+        end_prompt(diff_result)
         
         self._clear_PGServer()
-
-    def _testrunner_start_prompt(self, testcase):
-        import datetime
-        now = datetime.datetime.now()
-        print("+----------------------------------------")
-        print(" TestRunner for %s" % testcase)
-        print(" Start at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
-        print("----------------------------------------+")
-
-    def _testrunner_end_prompt(self, testcase):
-        import datetime
-        now = datetime.datetime.now()
-        print("+----------------------------------------")
-        #print(" TestRunner for %s" % testcase)
-        print(" Case end at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
-
-        # duplicate code with _capture_outputs, will enhance it later
-        case_name = os.path.basename(os.path.splitext(testcase)[0])
-        result_file = os.path.join(self._results_dir, case_name+".out")
-        print(" output", result_file)
-        print("----------------------------------------+")
 
     def _capture_outputs(self, testcase, out, err):
         case_name = os.path.basename(os.path.splitext(testcase)[0])
@@ -241,9 +304,50 @@ class Application(object):
         with open(result_file, 'a') as fd:
             fd.write(err)
         
+    def _make_many_diff(self, manycases):
+        """have a verify of specified test cases
 
-    def _diff(self):
-        pass
+        :type manycases: list of :class:`testcase.TestCaseDesc`
+        :param manycase: specified test cases to make diff
 
-    def _capture_logs(self):
-        pass
+        :rtype: list of Boolean
+        :returns: the diff results of specified test cases
+        """
+        results = []
+        for case in manycases:
+            results.append(self._make_diff(case))
+            
+        return results
+    
+    def _make_diff(self, case):
+        """have a verify of specified test cases
+
+        the verification will only use the simple diff command.
+        verification support multiple version of result compare
+
+        :type case: :class:`testcase.TestCaseDesc`
+        :param case: specified test case to make diff
+
+        :rtype: Boolean
+        :returns: the diff result of specified test case
+        """
+        expected = os.path.join(self._expected_dir, case.name()+".out")
+        result = os.path.join(self._results_dir, case.name()+".out")
+        print("** case %s, make diff" % case.name())
+        print("result:", result)
+        print("expect:", expected)
+        
+        if not os.path.exists(expected):
+            return False
+        if not os.path.exists(result):
+            return False
+
+        import subprocess
+        complete = subprocess.run(['diff', expected, result],
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+
+        if complete.returncode == 0:
+            return True
+            
+        return False

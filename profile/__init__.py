@@ -1,5 +1,6 @@
 import os
 import logging
+from utils.schedule import ScheduleCase
 
 logger = logging.getLogger('profile')
 
@@ -13,19 +14,28 @@ class Profile(object):
     """a test case holder, this is mainly used for a test case management,
     equal to a feather holding some test cases
 
-    :type path: str
-    :param path: the profile directory which to hold its test cases
-    
-    :type instruction: str
-    :param instruction: the profile instrction description strings
+    :type directory: str
+    :param directory: the path of the profile directory
+
+    :type use_schedule: Boolean
+    :param use_schedule: whether use the schedule file as the test case
+                         execution sequence management
     """
-    def __init__(self, directory):
+    def __init__(self, directory, use_schedule=True):
         self.path = convert_abs_path(directory)
         self.introduction = ""
         self._fill_instruction()
         self._cases = []
-        self._build()
         self._current_case_pos = -1
+        self._schedule = None
+        self._use_schedule = use_schedule
+        self._build()
+
+    def use_schedule(self):
+        return self._use_schedule
+
+    def schedule(self):
+        return self._schedule
 
     def _fill_instruction(self):
         """find a instruction file under the profile directory, if no file
@@ -34,7 +44,7 @@ class Profile(object):
         introduction_path = os.path.join(self.path, "introduction")
         if not os.path.exists(introduction_path):
             logger.info('there is no introduction for profile')
-            self.instruction = ''
+            self.introduction = 'no introduction file'
             return
 
         with open(introduction_path, 'r') as fd:
@@ -54,7 +64,22 @@ class Profile(object):
         return self._cases[self._current_case_pos]
 
     def _build(self):
-        """find all the test case under the profile directory"""
+        """build the testcase under the profile
+        
+        there are two mode of build method, one is base on schedule file,
+        one is loop all the cases in the profile directory
+
+        the schedule way is introduced after the loop all method, schedule
+        made the testcase executed parallelled and execution sequence can
+        be controled, this is the recommended way.
+        """
+        if self._use_schedule:
+            schedule_file = os.path.join(self.path, "schedule")
+            self._schedule = ScheduleCase(schedule_file)
+            self._schedule.parse()
+            return
+
+        # old loop all method
         for filename in os.listdir(self.path):
             if not filename.endswith('.spec'):
                 continue

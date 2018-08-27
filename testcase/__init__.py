@@ -5,17 +5,41 @@ from .case_parser import parse_testcase_structure
 
 logger = logging.getLogger("TestCase")
 
+class TestCaseDesc(object):
+    """TestCase simple description
+
+    :type name: str
+    :param name: the name identifier of the test case
+
+    :type path: str
+    :param path: the directory of the test located
+    """
+    def __init__(self, name, directory):
+        self._name = name
+        self._directory = directory
+
+    def name(self):
+        return self._name
+
+    def path(self):
+        path = os.path.join(self._directory, self._name+".spec")
+        return path
+
+    def __str__(self):
+        return self._name
+
+    def __repr__(self):
+        return "%s: %s" % (self._name, self.path())
+        
+
 class TestCase(object):
     """Test case constructor, parse the test case spec file content,
     and output content with command one my one which will be executed
     by command execution tool.
 
-    Args:
-      path: str, the absoluste path of the testcase
-      name: str, the name of the testcase
-      
+    :type path: str
+    :param path: the absoluste path of the testcase
     """
-
     def __init__(self, path):
         self.path = path
         self.name = os.path.basename(os.path.splitext(self.path)[0])

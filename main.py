@@ -38,7 +38,7 @@ def all_profiles():
 # main
 if __name__ == "__main__":
     for profile in all_profiles():
-        profile = Profile(profile)
+        profile = Profile(profile, use_schedule=True)
 
         app = Application(profile)
         try:
