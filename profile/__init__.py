@@ -23,6 +23,7 @@ class Profile(object):
     """
     def __init__(self, directory, use_schedule=True):
         self.path = convert_abs_path(directory)
+        self.name = os.path.basename(self.path)
         self.introduction = ""
         self._fill_instruction()
         self._cases = []

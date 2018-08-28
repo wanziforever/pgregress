@@ -19,23 +19,29 @@ def p_statement_expression(p):
                  | statement session_statement
                  | statement permutation_statement'''
     p[0] = statements
+    # here we handle statement setup is to different the setup in session
     if len(p) == 4:
         statements['setup'] = p[1]
+        statements['teardown'] = p[2]
 
-def p_comments_block(p):
-    '''comment_block : comment_block COMMENTS
-                   | COMMENTS'''
-    p[0] = "comments"
+# def p_comments_block(p):
+#     '''comment_block : comment_block COMMENTS
+#                    | COMMENTS'''
+#     p[0] = "comments"
+
+def p_empty(p):
+    '''empty : '''
+    pass
 
 # actually the comments before setup is for the whole file not only for
 # setup, here is just a temp solution
 def p_setup_statement_expression(p):
     '''setup_statement : SETUP L_LARGEPAREN sqlblock R_LARGEPAREN
-                       | comment_block setup_statement'''
+                       | empty'''
     if len(p) == 5:
         p[0] = p[3]
     else:
-        p[0] = p[2]
+        p[0] = []
 
 def p_sqlblock_clause(p):
     '''sqlblock : sqlblock SQLCLAUSE
@@ -49,9 +55,13 @@ def p_sqlblock_clause(p):
         p[0] = tmp
 
 def p_teardown_statement_expression(p):
-    '''teardown_statement : TEARDOWN L_LARGEPAREN sqlblock R_LARGEPAREN'''
-    p[0] = p[3]
-    statements['teardown'] = p[0]
+    '''teardown_statement : TEARDOWN L_LARGEPAREN sqlblock R_LARGEPAREN
+                          | empty'''
+    # if there will be a teardown in session, will do the same setup
+    if len(p) == 5:
+        p[0] = p[3]
+    else:
+        p[0] = []
 
 def p_session_statement_expression(p):
     '''session_statement : SESSION ID continue_steps_expression'''
@@ -75,7 +85,7 @@ def p_session_statement_setup_teardown_expression(p):
     setup = p[3]
     teardown = p[5]
     statements['sessions'][tag] = {
-        'sqls': p[4],
+        'steps': p[4],
         'setup': setup,
         'teardown': teardown
         }
@@ -85,7 +95,7 @@ def p_session_statement_teardown_expression(p):
     tag = p[2].strip('\"')
     teardown = p[4]
     statements['sessions'][tag] = {
-        'sqls': p[3],
+        'steps': p[3],
         'teardown': teardown
         }
     
@@ -111,6 +121,7 @@ def p_step_sqlblock(p):
 def p_permutation_statement(p):
     '''permutation_statement : permutation_expression'''
     statements['permutations'].append(p[1])
+    #p[0] = p[1]
 
 def p_permutation_expression_id(p):
     '''permutation_expression : PERMUTATION ID

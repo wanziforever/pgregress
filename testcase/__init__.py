@@ -199,7 +199,7 @@ class TestCase(object):
             if 'teardown' in session:
                 results.append({
                     'session_tag': tag,
-                    'sqls': session['setup'],
+                    'sqls': session['teardown'],
                     })
         return results
 

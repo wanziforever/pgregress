@@ -1,0 +1,24 @@
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>{{profile}}测试报告</title>
+    </head>
+    <body>
+        <h1>{{profile}}测试报告</h1>
+        <p><span>开始时间：</span><span>{{start}}</span></p>
+        <p><span>结束时间：</span><span>{{end}}</span></p>
+        <p><span>共</span><span>{{total}}</span><span>用例；</span><span>{{succeed}}</span><span>成功；</span><span>{{fail}}</span><span>失败</span></p>
+        <table border="1" style="width:80%">
+            <tr>
+                {% for column in columns %}
+                <th>{{column}}</th>
+                {% endfor %}
+            </tr>
+            {% for case in data %}
+            <tr>
+                <td>{{case[0]}}</td><td>{{case[1]}}</td><td>{{case[2]}}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </body>
+</html>

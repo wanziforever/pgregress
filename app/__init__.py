@@ -12,10 +12,13 @@ import time
 import logging
 import threading
 import os
+from report import ProfileReport
 
 logger = logging.getLogger('application')
 _DATA_PATH = './tmp_instance/data'
 _LOG_PATH = './tmp_instance/log'
+
+RUNNER_LOG_TO_SCREEN = True
 
 def capture_runner_output(proc, logfile, to_screen=True):
     """ this is called by a new thread, so that it can capture the log
@@ -55,11 +58,15 @@ class Application(object):
         self._results_dir = os.path.join(self._outputs_dir, 'results')
         self._expected_dir = os.path.join(profile.path, 'expected')
         self._logs_dir = os.path.join(self._outputs_dir, 'logs')
+        self._report_file = os.path.join(self._outputs_dir, "report.html")
         self._maint_session = None
         self._sessions = {}
         self.server = None
-
         self._clear_logs()
+        self._report = ProfileReport(self.profile.name)
+        self._start_time = None
+        self._end_time = None
+        self._fail_reason = {}
 
     def _check_directories(self):
         """prepare the required directories
@@ -124,6 +131,7 @@ class Application(object):
         print(" Profile for %s" % self.profile.path)
         print(" Start at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
         print("----------------------------------------+")
+        self._start_time = now
 
     def _end_profile_prompt(self):
         import datetime
@@ -132,6 +140,7 @@ class Application(object):
         print(" Profile for %s" % self.profile.path)
         print(" End at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
         print("----------------------------------------+")
+        self._end_time = now
         
     def run(self):
         """base the profile configration, start the test
@@ -179,10 +188,9 @@ class Application(object):
             print("----------end batch of test--------------")
             print(" End at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
             tests = batch.tests()
-            num = len(tests)
-            for i in range(num):
+            for i in range(batch.len()):
                 result = "ok" if results[i] is True else "fail"
-                print("  %s ... %s" % (tests[i].name(), result))
+                print("  %s ... %s" % (batch[i].name(), result))
             print("-----------------------------------------")
 
         start_prompt()
@@ -204,7 +212,8 @@ class Application(object):
                                        case.name()+".out")
 
             t = threading.Thread(target=capture_runner_output,
-                                 args=(child, result_file, False))
+                                 args=(child, result_file,
+                                       RUNNER_LOG_TO_SCREEN))
             t.start()
             processes.append(child)
 
@@ -216,7 +225,16 @@ class Application(object):
         self._clear_PGServer()
 
         end_prompt(diff_results)
-        
+
+        for i in range(batch.len()):
+            if diff_results[i] is False:
+                self._report.add_case_info(batch[i].name(),
+                                           diff_results[i],
+                                           '目标结果比对错误')
+            else:
+                self._report.add_case_info(batch[i].name(),
+                                           diff_results[i], '')
+
     def _start_test(self, testcase):
         """run the test case singly, one by one
         """
@@ -280,15 +298,25 @@ class Application(object):
         # a thread to monitor the runner tool, and print the stdout
         # content to screen and result file in real time
         t = threading.Thread(target=capture_runner_output,
-                             args=(child, result_file, False))
+                             args=(child, result_file,
+                                   RUNNER_LOG_TO_SCREEN))
         t.start()
         child.wait()
 
         diff_result = self._make_diff(testcase)
+
+        self._clear_PGServer()
         
         end_prompt(diff_result)
+
+        if diff_result is False:
+            self._report.add_case_info(testcase.name(),
+                                       diff_result,
+                                       '目标结果比对错误')
+        else:
+            self._report.add_case_info(testcase.name(),
+                                       diff_result, '')
         
-        self._clear_PGServer()
 
     def _capture_outputs(self, testcase, out, err):
         case_name = os.path.basename(os.path.splitext(testcase)[0])
@@ -351,3 +379,13 @@ class Application(object):
             return True
             
         return False
+
+    def report_gen(self):
+        self._report.set_start_time(
+            self._start_time.strftime("%Y-%m-%d %H:%M:%S")
+            )
+        self._report.set_end_time(
+            self._end_time.strftime("%Y-%m-%d %H:%M:%S")
+            )
+        self._report.generate_report(self._report_file)
+        

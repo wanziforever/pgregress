@@ -30,7 +30,7 @@ t_PERMUTATION = r'permutation'
 t_STEP = r'step'
 #t_QUOTE = r'"'
 t_ID = r'\"[a-zA-z0-9]+\"'
-t_COMMENTS = r'\#[^\n\r]*'
+#t_COMMENTS = r'\#[^\n\r]*'
 
 # A regular expression rule with some action code
 #def t_SQLBLOCK(t):
@@ -46,6 +46,10 @@ t_ignore = ' \t'
 def t_error(t):
     print("Illegal charactor '%s'" % t.value[0])
     t.lexer.skip(1)
+
+def t_COMMENTS(t):
+    r'\#[^\n\r]*'
+    pass
 
 lexer = lex.lex()
 

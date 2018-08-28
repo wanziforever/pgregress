@@ -43,6 +43,7 @@ if __name__ == "__main__":
         app = Application(profile)
         try:
             app.run()
+            app.report_gen()
         except Exception as e:
             print()
             logger.error(str(e))
@@ -50,3 +51,4 @@ if __name__ == "__main__":
             logger.debug(traceback.format_exc())
         else:    
             logger.debug('Done')
+

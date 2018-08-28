@@ -45,6 +45,9 @@ class TestBatch(object):
     def __str__(self):
         return " ".join(self._tests)
 
+    def __getitem__(self, number):
+        return self._tests[number]
+
 
 class ScheduleCase(object):
     def __init__(self, schedule_file):
