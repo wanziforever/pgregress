@@ -363,8 +363,9 @@ class TestRunner(object):
             # getResult timeout case
             if flags & STEP_NOBLOCK:
                 if self._check_lock(dbsession.get_backend_pid()):
-                    print("step %s: %s <waiting ...>"
-                          % (step['step_tag'], step['sqls']))
+                    if not (flags & STEP_RETRY):
+                        print("step %s: %s <waiting ...>"
+                              % (step['step_tag'], step['sqls']))
                     return True
                 
             now = time.time()

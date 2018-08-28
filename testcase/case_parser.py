@@ -15,7 +15,7 @@ statements = {
     }
 
 def p_statement_expression(p):
-    '''statement : setup_statement teardown_statement session_statement
+    '''statement : setup_multiple teardown_statement session_statement
                  | statement session_statement
                  | statement permutation_statement'''
     p[0] = statements
@@ -33,15 +33,26 @@ def p_empty(p):
     '''empty : '''
     pass
 
+def p_setup_multiple(p):
+    '''setup_multiple : setup_multiple setup_statement
+                      | setup_statement
+                      | empty'''
+    if len(p) == 2:
+        if p[1] is None:
+            p[0] = []
+        else:
+            p[0] = p[1]
+        
+    elif len(p) == 3:
+        tmp = p[1]
+        tmp.extend(p[2])
+        p[0] = tmp
+
 # actually the comments before setup is for the whole file not only for
 # setup, here is just a temp solution
 def p_setup_statement_expression(p):
-    '''setup_statement : SETUP L_LARGEPAREN sqlblock R_LARGEPAREN
-                       | empty'''
-    if len(p) == 5:
-        p[0] = p[3]
-    else:
-        p[0] = []
+    '''setup_statement : SETUP L_LARGEPAREN sqlblock R_LARGEPAREN'''
+    p[0] = p[3]
 
 def p_sqlblock_clause(p):
     '''sqlblock : sqlblock SQLCLAUSE
