@@ -18,11 +18,13 @@ def p_statement_expression(p):
     '''statement : setup_multiple teardown_statement session_statement
                  | statement session_statement
                  | statement permutation_statement'''
-    p[0] = statements
+
     # here we handle statement setup is to different the setup in session
     if len(p) == 4:
         statements['setup'] = p[1]
         statements['teardown'] = p[2]
+        
+    p[0] = statements
 
 # def p_comments_block(p):
 #     '''comment_block : comment_block COMMENTS
@@ -51,26 +53,26 @@ def p_setup_multiple(p):
 # actually the comments before setup is for the whole file not only for
 # setup, here is just a temp solution
 def p_setup_statement_expression(p):
-    '''setup_statement : SETUP L_LARGEPAREN sqlblock R_LARGEPAREN'''
-    p[0] = p[3]
+    '''setup_statement : SETUP SQLCLAUSE'''
+    p[0] = [p[2]]
 
-def p_sqlblock_clause(p):
-    '''sqlblock : sqlblock SQLCLAUSE
-                | SQLCLAUSE'''
-    if len(p) == 2:
-        p[0] = []
-        p[0].append(p[1])
-    elif len(p) == 3:
-        tmp = p[1]
-        tmp.append(p[2])
-        p[0] = tmp
+#def p_sqlblock_clause(p):
+#    '''sqlblock : sqlblock SQLCLAUSE
+#                | SQLCLAUSE'''
+#    if len(p) == 2:
+#        p[0] = []
+#        p[0].append(p[1])
+#    elif len(p) == 3:
+#        tmp = p[1]
+#        tmp.append(p[2])
+#        p[0] = tmp
 
 def p_teardown_statement_expression(p):
-    '''teardown_statement : TEARDOWN L_LARGEPAREN sqlblock R_LARGEPAREN
+    '''teardown_statement : TEARDOWN SQLCLAUSE
                           | empty'''
     # if there will be a teardown in session, will do the same setup
-    if len(p) == 5:
-        p[0] = p[3]
+    if len(p) == 3:
+        p[0] = [p[2]]
     else:
         p[0] = []
 
@@ -123,9 +125,9 @@ def p_continue_steps_expression_sqlblock(p):
         p[0] = tmp
         
 def p_step_sqlblock(p):
-    '''step : STEP ID L_LARGEPAREN sqlblock R_LARGEPAREN'''
+    '''step : STEP ID SQLCLAUSE'''
     p[0] = {
-        'sqls': p[4],
+        'sqls': [p[3]],
         'tag': p[2].strip('\"')
         }
 

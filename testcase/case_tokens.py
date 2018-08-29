@@ -2,13 +2,68 @@
 
 import ply.lex as lex
 
+def simple_parse_sqls(sqlstr):
+    sqlstr = sqlstr.strip()
+    if sqlstr[0] == '{':
+        # remove the left and right {}
+        sqlstr = sqlstr[1:-1]
+    return sqlstr
+
+def parse_sqls(sqlstr):
+    sqlstr = sqlstr.strip()
+    if sqlstr[0] == '{':
+        # remove the left and right {}
+        sqlstr = sqlstr[1:-1]
+        
+    sqlstr = sqlstr.strip()
+
+    sqls = []
+    startpos = 0
+    newstr = ''
+    inquora = False
+    indollar = False
+    for i in range(len(sqlstr)):
+        c = sqlstr[i]
+        if c == '\'' and inquora is False:
+            # handle wrap quora case
+            if i > 0 and sqlstr[i-1] == '\\':
+                pass
+            else:
+                inquora = True
+            continue
+
+        if c == '\'' and inquora is True:
+            if i > 0 and sqlstr[i-1] == '\\':
+                pass
+            else:
+                inquora = False
+            continue
+
+        # for simple implemetation, ignore the wrap \$$ case handling
+        if c == '$' and sqlstr[i+1] == '$':
+            # in a double $$ sign
+            indollar = not indollar
+            i += 1
+            continue
+
+        if c == ';' and inquora is False and indollar is False:
+            newstr = sqlstr[startpos:i].strip()
+            # remove newlines
+            sqls.append(newstr)
+            startpos = i+1
+
+    if i > startpos:
+        sqls.append(sqlstr[startpos:i].strip())
+    return sqls
+            
+
 # List of token names.
 tokens = [
     'SETUP',
     #'SQLBLOCK',
     'SQLCLAUSE',
-    'L_LARGEPAREN',
-    'R_LARGEPAREN',
+    #'L_LARGEPAREN',
+    #'R_LARGEPAREN',
     'TEARDOWN',
     'SESSION',
     'STEP',
@@ -21,9 +76,9 @@ tokens = [
 # Regular expression rules for simple tokens
 t_SETUP = r'setup'
 #t_SQLBLOCK = r'\{[\w\n ;()%,\_\-]+\}'
-t_SQLCLAUSE = r'[a-zA-Z0-9 \t%-_()$|\n\r=\']+;'
-t_L_LARGEPAREN = r'\{'
-t_R_LARGEPAREN = r'\}'
+#t_SQLCLAUSE = r'[a-zA-Z0-9 \t%-_()$|\n\r=\']+;'
+#t_L_LARGEPAREN = r'\{'
+#t_R_LARGEPAREN = r'\}'
 t_TEARDOWN = r'teardown'
 t_SESSION = r'session'
 t_PERMUTATION = r'permutation'
@@ -36,6 +91,12 @@ t_ID = r'\"[a-zA-z0-9]+\"'
 #def t_SQLBLOCK(t):
 #    r'{.+}'
 #    return t
+
+def t_SQLCLAUSE(t):
+    r'\{[\s\S]+?\}'
+    raw = t.value
+    t.value = simple_parse_sqls(raw)
+    return t
 
 def t_newline(t):
     r'\n+'

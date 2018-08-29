@@ -63,15 +63,6 @@ class TestCase(object):
         self._build_internals()
         self._build_implicit_permutations()
 
-    def _build_scenarios(self):
-        index = 0
-        for perm in self._permutations:
-            sqls = self._build_commands_sequence(perm)
-            self._scenarios.append({
-                'name': 'scenario'+str(index),
-                'commands': sqls
-                })
-
     def _build_internals(self):
         """extract the data from the raw structures, and this will make
         other functions easyly to use the structure data"""
