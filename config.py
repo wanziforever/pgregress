@@ -4,3 +4,4 @@ dbname = 'postgres'
 user='denny'
 password='denny'
 installation='/mnt/study/pg/installation'
+runner_output_to_streen=True

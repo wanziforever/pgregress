@@ -12,13 +12,14 @@ import time
 import logging
 import threading
 import os
+import config
 from report import ProfileReport
 
 logger = logging.getLogger('application')
 _DATA_PATH = './tmp_instance/data'
 _LOG_PATH = './tmp_instance/log'
 
-RUNNER_LOG_TO_SCREEN = True
+RUNNER_LOG_TO_SCREEN = config.runner_output_to_streen
 
 def capture_runner_output(proc, logfile, to_screen=True):
     """ this is called by a new thread, so that it can capture the log
