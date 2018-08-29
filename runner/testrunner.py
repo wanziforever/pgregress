@@ -186,6 +186,8 @@ class TestRunner(object):
             for step in steps:
                 self._run_step_sqls(step)
 
+            self._try_complete_waiting_steps(STEP_RETRY)
+
             self._load_session_teardown_sqls()
             self._load_teardown_sqls()
 
@@ -228,7 +230,7 @@ class TestRunner(object):
             # clear the old error step message to just monitor the very
             # recent step error message
             self._errorsteps = {}
-            self._try_complete_waiting_steps()
+            self._try_complete_waiting_steps(STEP_NOBLOCK | STEP_RETRY)
             self._report_multiple_error_messages(oldstep)
 
         # we support more than one sqls in one step, the sqls were seperated
@@ -251,7 +253,7 @@ class TestRunner(object):
         # after execute a step, check wether it can make some waiting
         # steps to go through
         self._errorsteps = {}
-        self._try_complete_waiting_steps()
+        self._try_complete_waiting_steps(STEP_NOBLOCK | STEP_RETRY)
         self._report_multiple_error_messages(step)
 
         if wait:
@@ -292,13 +294,13 @@ class TestRunner(object):
 
         return oldstep
                 
-    def _try_complete_waiting_steps(self):
+    def _try_complete_waiting_steps(self, flags):
         """check all the existing waiting steps whether some of them can
         go through. use NOBLOCK mode, the check cannot hange to wait step
         to complete.
         """
         for step in self._waitings:
-            if self._try_complete_step(step, STEP_NOBLOCK | STEP_RETRY):
+            if self._try_complete_step(step, flags):
                 # still waiting, just keep it in the wait list
                 continue
             else:

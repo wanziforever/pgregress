@@ -203,6 +203,8 @@ class PGAsyncConnection(object):
         :param second: seconds the function will wait for , 0 means wait
                        forever, normally use a very little number for a
                        async wait
+        :rtype: list of tuples
+        :returns: descriptions and rows, (None, None) for timeout 
         """
         if self._async_cursor is None or self._async_cursor.closed:
             raise Exception(
