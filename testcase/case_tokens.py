@@ -21,7 +21,7 @@ tokens = [
 # Regular expression rules for simple tokens
 t_SETUP = r'setup'
 #t_SQLBLOCK = r'\{[\w\n ;()%,\_\-]+\}'
-t_SQLCLAUSE = r'[a-zA-Z0-9 \t%-_()\n\r]+;'
+t_SQLCLAUSE = r'[a-zA-Z0-9 \t%-_()$|\n\r=\']+;'
 t_L_LARGEPAREN = r'\{'
 t_R_LARGEPAREN = r'\}'
 t_TEARDOWN = r'teardown'
