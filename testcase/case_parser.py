@@ -1,5 +1,17 @@
 #!/usr/bin/env python
 
+"""
+parse the test case file, and generate the related structure
+..note
+  the step related sql will only generate the string type and setup or
+  teardown related sqls will have list type, since there are possiblity
+  multiple setup or teardown sections, and we want to seperate the sqls
+  in different sections, so we put the sqls in different sections to a
+  list. the reason not let the step sql use list is to max consistent with
+  C version program output (there is no `[]` in the screen print of the
+  step sqls)
+"""
+
 import json
 import ply.yacc as yacc
 from .case_tokens import tokens
@@ -127,7 +139,7 @@ def p_continue_steps_expression_sqlblock(p):
 def p_step_sqlblock(p):
     '''step : STEP ID SQLCLAUSE'''
     p[0] = {
-        'sqls': [p[3]],
+        'sqls': p[3],
         'tag': p[2].strip('\"')
         }
 

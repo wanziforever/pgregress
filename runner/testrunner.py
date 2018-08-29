@@ -60,6 +60,11 @@ class TestRunner(object):
 
         :type dry_run: Boolen
         :param dry_run: Tell the function whether need a dry run
+
+        ..note:
+          all the sqls in setup and teardown section will have a list type
+          sqls in step is a string type, refer to the description of parser
+          file for detail reason
         """
         self._testcase.build()
 
@@ -233,12 +238,7 @@ class TestRunner(object):
             self._try_complete_waiting_steps(STEP_NOBLOCK | STEP_RETRY)
             self._report_multiple_error_messages(oldstep)
 
-        # we support more than one sqls in one step, the sqls were seperated
-        # by `;` in one line of step definition, here just join the sqls into
-        # one line back, and tread it as one line sql to max complaint with
-        # orginal c version code (although it is not clear that c version
-        # code support sqls in one line seperated by `;`)
-        onelinesql = ';'.join(step['sqls'])
+        onelinesql = step['sqls']
         session_tag = step['session_tag']
         dbsession = self._get_session_by_tag(session_tag)
         if dbsession is None:

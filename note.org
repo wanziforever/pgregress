@@ -4,7 +4,12 @@
 # use psql to connect the port and check whether there is a postgres server running
 
 
+# open issues
+for case read-write-unique-3, the offical error is simple, but ours are complex
+result file will remain the sql with original newlines, buy our sqls are in the list, and the newline will display \n
 
 
 
+
+# fast command
  PATH="/mnt/study/pg/code/postgresql-11beta2/tmp_install/mnt/study/pg/installation/bin:$PATH" LD_LIBRARY_PATH="/mnt/study/pg/code/postgresql-11beta2/tmp_install/mnt/study/pg/installation/lib:$LD_LIBRARY_PATH" ../../../src/test/isolation/pg_isolation_regress --temp-instance=./tmp_check_iso --inputdir=. --outputdir=output_iso --bindir=  timeouts
