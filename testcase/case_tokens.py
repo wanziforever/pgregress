@@ -7,6 +7,9 @@ def simple_parse_sqls(sqlstr):
     if sqlstr[0] == '{':
         # remove the left and right {}
         sqlstr = sqlstr[1:-1]
+    # here only strip the blank with strip newline is to compliant with
+    # c code
+    sqlstr = sqlstr.strip(' ')
     return sqlstr
 
 def parse_sqls(sqlstr):

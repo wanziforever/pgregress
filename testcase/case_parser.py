@@ -23,7 +23,13 @@ statements = {
     'setup': [],
     'teardown': [],
     'sessions': {},
-    'permutations': []
+    'permutations': [],
+    # here use a session sequence is the workaround for permutation
+    # generation, the aim is to keep the same sequence of the permutation
+    # with offical C version, but we use a dict type session holder, when
+    # generating the permutation, the dict keys will not show the real
+    # definition sequence in the testcase
+    'session_sequence': []
     }
 
 def p_statement_expression(p):
@@ -94,6 +100,9 @@ def p_session_statement_expression(p):
     statements['sessions'][tag] = {
         'steps': p[3]
         }
+    print("----------------------------------------------")
+    statements['session_sequence'].append(tag)
+    printt(statements)
 
 def p_session_statement_setup_expression(p):
     '''session_statement : SESSION ID setup_statement continue_steps_expression'''
@@ -103,6 +112,7 @@ def p_session_statement_setup_expression(p):
         'steps': p[4],
         'setup': setup
         }
+    statements['session_sequence'].append(tag)
 
 def p_session_statement_setup_teardown_expression(p):
     '''session_statement : SESSION ID setup_statement continue_steps_expression teardown_statement'''
@@ -114,6 +124,7 @@ def p_session_statement_setup_teardown_expression(p):
         'setup': setup,
         'teardown': teardown
         }
+    statements['session_sequence'].append(tag)
 
 def p_session_statement_teardown_expression(p):
     '''session_statement : SESSION ID continue_steps_expression teardown_statement'''
@@ -123,6 +134,7 @@ def p_session_statement_teardown_expression(p):
         'steps': p[3],
         'teardown': teardown
         }
+    statements['session_sequence'].append(tag)
     
 def p_continue_steps_expression_sqlblock(p):
     '''continue_steps_expression : continue_steps_expression step

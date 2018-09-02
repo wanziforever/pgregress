@@ -219,7 +219,8 @@ class PGAsyncConnection(object):
                 state = self._conn.poll()
             except Exception as e:
                 diag = e.diag
-                raise Exception("%s: %s" % (diag.severity, str(e)))
+                # only raise the primary error message
+                raise Exception("%s:  %s" % (diag.severity, diag.message_primary))
             if state == psycopg2.extensions.POLL_OK:
                 break
             else:
@@ -229,13 +230,17 @@ class PGAsyncConnection(object):
                 else:
                     continue
 
+        descriptions = []
+        if hasattr(self._async_cursor, "description") \
+           and self._async_cursor.description is not None:
+            descriptions = [desc[0] for desc in self._async_cursor.description]
+            
         try:
             dbrows = self._async_cursor.fetchall()
         except Exception as e:
             #print("we got some exception for fetchall", str(e))
-            return [], []
-        
-        descriptions = [desc[0] for desc in self._async_cursor.description]
+            return descriptions, []
+
         rows = [list(row) for row in dbrows]
 
         self._async_cursor.close()

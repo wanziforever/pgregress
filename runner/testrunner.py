@@ -15,6 +15,7 @@ logger = logging.getLogger("TestRunner")
 
 STEP_NOBLOCK = 0x1
 STEP_RETRY = 0x2
+STEP_IN_SQLBLOCK = 0x4
 
 class TestRunner(object):
     """Test case running tool
@@ -88,7 +89,8 @@ class TestRunner(object):
         logger.debug("LOADING SETUP SQLS")
         # fetch sqls from testcase, and send it to maint session
         for sql in self._testcase.setups():
-            self._maint_session.execute(sql)
+            descriptions, rows = self._maint_session.execute(sql)
+            self._output_db_result(descriptions, rows)
 
     def _load_teardown_sqls(self):
         """get the sqls from testcase teardown module, and execute them
@@ -111,7 +113,8 @@ class TestRunner(object):
                 raise Exception("cannot find session by tag %s"
                                 % session_tag)
             for sql in setup['sqls']:
-                dbsession.execute(sql)
+                descriptions, rows = dbsession.execute(sql)
+                self._output_db_result(descriptions, rows)
 
     def _load_session_teardown_sqls(self):
         """get the sqls from each session level teardown model, and execute
@@ -127,7 +130,8 @@ class TestRunner(object):
                 raise Exception("cannot find session by tag %s"
                                 % session_tag)
             for sql in setup['sqls']:
-                dbsession.execute(sql)
+                descriptions, rows = dbsession.execute(sql)
+                self._output_db_result(descriptions, rows)
 
     def _start_dry_run(self):
         """only print the sqls for setup, teardown, permutation in sequence
@@ -154,8 +158,8 @@ class TestRunner(object):
             print('LOADING PERMUTATION STEPS SQlS')
             for step in steps:
                 session_tag = step['session_tag']
-                for sql in step['sqls']:
-                    print("Session(%s): %s" % (session_tag, sql))
+                sql = step['sqls']
+                print("Session(%s): %s" % (session_tag, sql))
 
             print("LOADING SESSION TEARDOWN SQLS")
             for setup in self._testcase.session_teardowns():
@@ -182,6 +186,7 @@ class TestRunner(object):
               % len(self._sessions.keys()))
         for steps in self._testcase.next_permutation_steps():
             # print("ROUND %d START" % round_num)
+            print()
             print("starting permutation: %s"
                   % " ".join([x['step_tag'] for x in steps]))
             self._load_setup_sqls()
@@ -196,7 +201,6 @@ class TestRunner(object):
             self._load_session_teardown_sqls()
             self._load_teardown_sqls()
 
-            print()
             round_num += 1
 
     def _run_step_sqls(self, step) :
@@ -234,30 +238,55 @@ class TestRunner(object):
         if oldstep:
             # clear the old error step message to just monitor the very
             # recent step error message
-            self._errorsteps = {}
             self._try_complete_waiting_steps(STEP_NOBLOCK | STEP_RETRY)
             self._report_multiple_error_messages(oldstep)
 
-        onelinesql = step['sqls']
         session_tag = step['session_tag']
         dbsession = self._get_session_by_tag(session_tag)
         if dbsession is None:
             raise Exception(
                 "cannot find session by tag %s" % session_tag
                 )
-        # async call, no wait for sync result
-        #print("%s:%s" % (session_tag, step['step_tag']), "=>", onelinesql)
-        dbsession.sendSQL(onelinesql)
-        wait = self._try_complete_step(step, STEP_NOBLOCK)
+        from utils.sql import parse_sqls
+        sqls = parse_sqls(step['sqls'])
+        onelinesql = ''
+        
+        if len(sqls) == 1:
+            onelinesql = sqls[0]
+            # async call, no wait for sync result
+            #print("%s:%s" % (session_tag, step['step_tag']), "=>", onelinesql)
+            dbsession.sendSQL(onelinesql)
+            wait = self._try_complete_step(step, STEP_NOBLOCK)
+
+        elif len(sqls) > 1:
+            # here there is limitation, all the sub sqls will sendout, but
+            # if the session is blocked by one of the sub sqls, the later
+            # sub has been send, it is not clear what will happen
+
+            # sinece each call to try_complete_step will trigger a step
+            # information print, we need to flag to indicate only print
+            # once for current step
+            wait = False
+            for onelinesql in sqls:
+                dbsession.sendSQL(onelinesql)
+                onewait = self._try_complete_step(step, STEP_NOBLOCK | STEP_IN_SQLBLOCK)
+                if onewait:
+                    wait = True
+            # remove trik flag which is to control the print
+            if 'printed' in step:
+                del step['printed']
+
+        else:
+            raise Exception("fail to parse sql, no sql can be parsed out")
 
         # after execute a step, check wether it can make some waiting
         # steps to go through
-        self._errorsteps = {}
         self._try_complete_waiting_steps(STEP_NOBLOCK | STEP_RETRY)
         self._report_multiple_error_messages(step)
-
+        
         if wait:
             self._waitings.append(step)
+        
 
     def _complete_previous_steps(self, step):
         """Check whether the session that needs to perform the next step is
@@ -306,6 +335,12 @@ class TestRunner(object):
             else:
                 # the step has completed either succeed, or fail
                 self._waitings.remove(step)
+                # if the tag in the errorsteps, it means the complete with
+                # fail, if not in errorsteps, should a empty error entry to
+                # errorsteps for error combination report(align with c code)
+                tag = step['step_tag']
+                if tag not in self._errorsteps:
+                    self._errorsteps[step['step_tag']] = ''
                 
         
     def _try_complete_step(self, step, flags):
@@ -324,12 +359,20 @@ class TestRunner(object):
         blocked, after that go to other session, then we still need to
         come back to complete this step, this time, we call the retry.
 
-        .. note::
+        .. note:
            here is problem is that although you provide a nonblock flag in
            the function parameter, if it is hang not for a lock, it will
            still block there for 60 or 75 seconds, this is an original
            design, since it is enough to handle the requirement, no change
            to be done here.
+
+        .. note:
+           there may be a very complex sql clause in a step (like begin
+           blablabla ... commit), and the sql will be devided into sub
+           sqls which need to be executed one by one, but only print the
+           whole complex sql clause once, so add a new STEP type IN_SQLBLOCK
+           which indicate the current step is a sub sql step, and try to
+           see whether the whole sql has been printed
 
         :type step: dict
         :param step: structure hold a entirely test case step related data
@@ -352,10 +395,9 @@ class TestRunner(object):
                 descriptions, rows = dbsession.getResult(block_time)
             except Exception as e:
                 # failure is also a complete branch, and print complete
-                print("step %s: <... completed>" % step['step_tag'])
                 self._errorsteps[step['step_tag']] = str(e)
-
-                return False
+                #return False
+                break
 
             # the getResult may return a empty result, this is different
             # from the timeout case, for timeout it return two None
@@ -366,12 +408,21 @@ class TestRunner(object):
             if flags & STEP_NOBLOCK:
                 if self._check_lock(dbsession.get_backend_pid()):
                     if not (flags & STEP_RETRY):
-                        print("step %s: %s <waiting ...>"
+                        # very triky STEP_IN_SQLBLOCK and printed flag
+                        # check for sqlblocks print workaround
+                        if not (flags & STEP_IN_SQLBLOCK):
+                            print("step %s: %s <waiting ...>"
                               % (step['step_tag'], step['sqls']))
+                        else:
+                           if not 'printed' in step:
+                               print("step %s: %s <waiting ...>"
+                                     % (step['step_tag'], step['sqls']))
+                               # just set a flag
+                               step['printed'] = None
                     return True
                 
             now = time.time()
-            if now - start_time > 20 and not canceled:
+            if now - start_time > 60 and not canceled:
                 dbsession.cancel_backend()
                 canceled = True
 
@@ -380,9 +431,23 @@ class TestRunner(object):
                                 % step["step_tag"])
                         
         if flags & STEP_RETRY:
-            print("step %s: <... completed>" % step['step_tag'])
+            # very triky STEP_IN_SQLBLOCK and printed flag
+            # check for sqlblocks print workaround
+            if not (flags & STEP_IN_SQLBLOCK):
+                print("step %s: <... completed>" % step['step_tag'])
+            else:
+                if not 'printed' in step:
+                    print("step %s: <... completed>" % step['step_tag'])
+                    step['printed'] = None
         else:
-            print("step %s: %s" % (step['step_tag'], step['sqls']))
+            # very triky STEP_IN_SQLBLOCK and printed flag
+            # check for sqlblocks print workaround
+            if not (flags & STEP_IN_SQLBLOCK):
+                print("step %s: %s" % (step['step_tag'], step['sqls']))
+            else:
+                if not 'printed' in step:
+                    print("step %s: %s" % (step['step_tag'], step['sqls']))
+                    step['printed'] = None
 
         self._output_db_result(descriptions, rows)
         return False
@@ -494,19 +559,51 @@ class TestRunner(object):
         :param rows: entry rows for the result of a db query
           
         """
-        if not descriptions or not rows:
+
+        def convert_result(value):
+            """currently python has different value print as c style, below
+            is the convertion to do:
+            * python style False/True to C style f/t
+            * python style None to C style `[nil]`(blank)
+            """
+            if value is False:
+                return 'f'
+            if value is True:
+                return 't'
+            if value is None:
+                return ''
+            return value
+                
+        #if not descriptions or not rows:
+        #    return
+        if descriptions is None or rows is None:
+            return
+
+        if len(descriptions) == 0:
             return
         
         for desc in descriptions:
-            print("%-15s" % desc, end=' ')
+            print("%-15s" % desc, end='')
 
-        print()
-        print()
+        print("\n")
 
         for row in rows:
             for t in row:
-                print("%-15s" % t, end=' ')
+                t = convert_result(t)
+                print("%-15s" % t, end='')
             print()
+
+    def _report_error_message(self, step):
+        """a error report method only report the target step error mssage
+
+        :type step: dict
+        :param step: session step data which is parsed from testcase data
+        """
+        tag = step['step_tag']
+        if tag in self._errorsteps:
+            print(self._errorsteps[tag])
+            del self._errorsteps[tag]
+        
 
     def _report_multiple_error_messages(self, step):
         """report the errors during the step processing
@@ -514,20 +611,37 @@ class TestRunner(object):
         since the error maybe happened during two session block case,
         so we try to print all the errors received from database backend
         for all the steps which has relations.
+
+        :type step: dict
+        :param step: session step data which is parsed from testcase data
+
+        ..note:
+          to compliant with C version code, if there is only the error for
+          specified step, just call the _report_error_message
         """
+
         tag = step['step_tag']
         extratags = [etag for etag in self._errorsteps.keys() if etag != tag]
+
+        if len(extratags) == 0:
+            self._report_error_message(step)
+            return
+        
         all_tags = [tag]
         all_tags.extend(extratags)
 
         if tag in self._errorsteps:
-            print("error in steps %s: %s"
-                  % (" ".join(all_tags), self._errorsteps[tag]))
+            if self._errorsteps[tag]:
+                print("error in steps %s: %s"
+                      % (" ".join(all_tags), self._errorsteps[tag]))
+            del self._errorsteps[tag]
 
         for etag in extratags:
-            print("error in steps %s: %s"
-                  % (" ".join(all_tags), self._errorsteps[etag]))
-        
+            if self._errorsteps[etag]:
+                print("error in steps %s: %s"
+                      % (" ".join(all_tags), self._errorsteps[etag]))
+            del self._errorsteps[etag]
+
 
 def usage():
     """ show the usage of the tool, including the arguments

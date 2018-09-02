@@ -51,6 +51,7 @@ class TestCase(object):
         self._teardowns = []
         self._sessions = {}
         self._permutations = []
+        self._session_sequence = []
         # here is just a cache, also can do a list search each form the
         # sessions  each time
         self._step_mapping = {}
@@ -73,6 +74,7 @@ class TestCase(object):
         self._teardowns = list(self._structure['teardown'])
         self._sessions = dict(self._structure['sessions'])
         self._permutations = list(self._structure['permutations'])
+        self._session_sequence = list(self._structure['session_sequence'])
 
     def __str__(self):
         """reurn two types of case description, one is builded version,
@@ -120,21 +122,58 @@ class TestCase(object):
         # owned session. yes, i know the session level combination will not
         # make sense for crossing execution lock detect, but now it is only
         # a temp solution.
-        import itertools
-        if not self._sessions:
-            return
+        # import itertools
+        # if not self._sessions:
+        #     return
+        # sessions = []
+        # for tag, data in self._sessions.items():
+        #     sessions.append(data)
+        # 
+        # session_permutations = list(itertools.permutations(sessions))
+        # 
+        # for permutation in session_permutations:
+        #     tags = []
+        #     for item in permutation:
+        #         for step in (item['steps']):
+        #             tags.append(step['tag'])
+        #     self._permutations.append(tags)
+        #
+        # ---above is the old simple permutation algorithm, below is new
+        # ---which is wrap the C version to python with the same output
+        
+        def permutation(sessions, nsteps, steps):
+            found = False
+            for i in range(nsessions):
+                if piles[i] < len(sessions[i]):
+                    steps[nsteps] = sessions[i][piles[i]]
+                    piles[i] += 1
+                    yield from permutation(sessions, nsteps+1, steps)
+                    piles[i] -= 1
+                    found = True
+
+            if found is False:    
+                #self._permutations.append(list(steps))
+                 yield list(steps)
+
         sessions = []
-        for tag, data in self._sessions.items():
-            sessions.append(data)
-
-        session_permutations = list(itertools.permutations(sessions))
-
-        for permutation in session_permutations:
-            tags = []
-            for item in permutation:
-                for step in (item['steps']):
-                    tags.append(step['tag'])
-            self._permutations.append(tags)
+        nsteps = 0
+        # MUST use the session sequence as the sort keys, shince it is the
+        # session definition sequence which will compliant with offical
+        # implementation, it will generate same output data, it not, the
+        # different sequence will make new output which is different from
+        # expected output
+        sorted_keys = self._session_sequence
+        for tag in sorted_keys:
+            data = self._sessions[tag]
+            session_tags = [step['tag'] for step in data['steps']]
+            nsteps += len(session_tags)
+            sessions.append(session_tags)
+        
+        nsessions = len(sessions)
+        steps = [''] * nsteps
+        piles = [0] * nsessions
+        for steps in permutation(sessions, 0, steps):
+            self._permutations.append(steps)
 
     def _build_step_mapping(self):
         pass
@@ -164,6 +203,9 @@ class TestCase(object):
 
     def permutations(self):
         return self._permutations
+
+    def session_definition_sequence(self):
+        return self._session_sequence
 
     def permutation_num(self):
         return len(self._permutations)
