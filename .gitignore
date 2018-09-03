@@ -7,4 +7,5 @@ __pycache__
 data/*
 !data/offical/schedule
 !data/offical/*.spec
+!data/offical/expected
 
