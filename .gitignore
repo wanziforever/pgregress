@@ -3,6 +3,9 @@ __pycache__
 *tmp*
 *.out
 *.log
-data/*
-!data/offical/*
+/data/**/*
+!/data/offical/*
+!/data/offical/
+!/data/offical/expected/
+!/data/offical/expected/*
 
