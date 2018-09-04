@@ -9,7 +9,7 @@ def simple_parse_sqls(sqlstr):
         sqlstr = sqlstr[1:-1]
     # here only strip the blank with strip newline is to compliant with
     # c code
-    sqlstr = sqlstr.strip(' ')
+    sqlstr = sqlstr.strip("[ \t]")
     return sqlstr
 
 def parse_sqls(sqlstr):

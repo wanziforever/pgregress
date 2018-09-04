@@ -15,3 +15,9 @@ consider to raise a timeout exception instead of return None which stands for a 
 
 # fast command
  PATH="/mnt/study/pg/code/postgresql-11beta2/tmp_install/mnt/study/pg/installation/bin:$PATH" LD_LIBRARY_PATH="/mnt/study/pg/code/postgresql-11beta2/tmp_install/mnt/study/pg/installation/lib:$LD_LIBRARY_PATH" ../../../src/test/isolation/pg_isolation_regress --temp-instance=./tmp_check_iso --inputdir=. --outputdir=output_iso --bindir=  timeouts
+
+
+# package dependency
+pip install ply
+pip install jinja2
+pip install psycopg2

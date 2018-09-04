@@ -350,6 +350,6 @@ class PGConnectionManager(object):
         """
         conn = psycopg2.connect(database=database, user=user,
                                 password=password, host=host,
-                                port=port, async=1)
+                                port=port, async_=1)
         wait_async(conn)
         return PGAsyncConnection(conn)

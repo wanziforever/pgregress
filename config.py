@@ -3,5 +3,5 @@ port = 5433
 dbname = 'postgres'
 user='denny'
 password='denny'
-installation='/mnt/study/pg/installation'
+installation='/pgdata/installation'
 runner_output_to_streen=True

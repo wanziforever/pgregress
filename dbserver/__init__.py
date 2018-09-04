@@ -306,11 +306,32 @@ class DBServer(object):
 
     @staticmethod
     def removeDB(data_path):
+        """ remove the database files and directory
+
+        sometime we will found the deletion of the directory fail due to
+        some `not empty` error, sleep 1 second, and try again, max_retry
+        is limited
+        """
         logger.debug(
             "database is successfully removed for %s" % data_path
             )
         import shutil
-        shutil.rmtree(data_path)
+        retry_times = 0
+        max_retry_times = 3
+        while True:
+            try:
+                shutil.rmtree(data_path)
+            except Exception as e:
+                print("fail to remove the directory %s for reason %s"
+                      % (data_path, str(e)))
+                if retry_times >= max_retry_times:
+                    exit(1)
+                print("sleep 1 second and retry to remove again")
+                time.sleep(1)
+                continue
+            else:
+                break
+            
 
     @staticmethod
     def check_database_data_exist(data_path):
