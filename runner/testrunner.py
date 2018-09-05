@@ -39,6 +39,7 @@ STEP_IN_SQLBLOCK = 0x4
 # involved for pasring sql paragragh function
 RESULT_HOLD_IN_SQL_PARAGRAGH = []
 STEP_HOLD_IN_SQL_PARAGRAGH = []
+STEP_WAIT_IN_SQL_PARAGRAGH = {}
 
 def prefer_sql_paragragh_step_status(keyword):
     for oneline in STEP_HOLD_IN_SQL_PARAGRAGH:
@@ -55,6 +56,9 @@ def clear_sql_paragragh_step_status():
 def clear_result_hold_in_sql_paragragh():
     global RESULT_HOLD_IN_SQL_PARAGRAGH
     RESULT_HOLD_IN_SQL_PARAGRAGH = []
+
+def register_sql_paragragh_wait(step_tag, index):
+    STEP_WAIT_IN_SQL_PARAGRAGH[step_tag] = index
 
 class TestRunner(object):
     """Test case running tool
@@ -306,13 +310,18 @@ class TestRunner(object):
             # information print, we need to flag to indicate only print
             # once for current step
             wait = False
-            for onelinesql in sqls:
+            for idx in range(len(sqls)):
+                onelinesql = sqls[idx]
+                #print("going to send sql", onelinesql)
                 dbsession.sendSQL(onelinesql)
-                onewait = self._try_complete_step(
+                wait = self._try_complete_step(
                     step, STEP_NOBLOCK | STEP_IN_SQLBLOCK
                     )
-                if onewait:
-                    wait = True
+                if wait:
+                    #print("sql hold for paragragh", onelinesql)
+                    if idx < len(sqls) - 1:
+                        register_sql_paragragh_wait(step['step_tag'], idx+1)
+                    break
                     
             # if there is any waiting, print it, if not print normal step
             onelinestr = prefer_sql_paragragh_step_status('<waiting ...')
@@ -327,12 +336,70 @@ class TestRunner(object):
         else:
             raise Exception("fail to parse sql, no sql can be parsed out")
 
+
         # after execute a step, check wether it can make some waiting
         # steps to go through
         self._try_complete_waiting_steps(STEP_NOBLOCK | STEP_RETRY)
         self._report_multiple_error_messages(step)
-        
+
         if wait:
+            self._waitings.append(step)
+
+    def _complete_sql_paragragh_wait(self, step):
+        """complete the sqls unexecuted in a step due to wait
+
+        there are some complex sql paragragh steps, and maybe one of
+        the sqls will block, the later ones will block, too, at blocking
+        time, we can not send the more sqls, database will return
+        `execute cannot be used while an asynchronous query is underway`
+        when there is some sql left when meet waiting, we have recorded
+        it some place. and now we want to resume it when just when the
+        last wait sql unblocked
+
+        :type step: dict
+        :param step: the step want to continue the later sqls
+        """
+        tag = step['step_tag']
+        if tag not in STEP_WAIT_IN_SQL_PARAGRAGH:
+            return
+
+        idx = STEP_WAIT_IN_SQL_PARAGRAGH.pop(tag)
+        
+        sqls = parse_sqls(step['sqls'])
+        if idx >= len(sqls) - 1:
+            # print("last sql in waiting, this case should not have register"
+            #      " the sql paragragh")
+            return
+
+        dbsession = self._get_session_by_tag(session_tag)
+        if dbsession is None:
+            raise Exception(
+                "cannot find session by tag %s" % session_tag
+                )
+
+        onewait = False
+        for lateridx in range(idx, len(sqls)):
+            onelinesql = sqls[lateridx]
+            dbsession.sendSQL(onelinesql)
+            onewait = self._try_complete_step(
+                step, STEP_NOBLOCK | STEP_IN_SQLBLOCK
+                )
+            if onewait:
+                #print("sql hold for paragragh", onelinesql)
+                if idx < len(sqls) - 1:
+                    register_sql_paragragh_wait(step['step_tag'], idx+1)
+                break
+
+        onelinestr = prefer_sql_paragragh_step_status('<waiting ...')
+        if onelinestr:
+            print(onelinestr)
+        clear_sql_paragragh_step_status()
+                
+        if RESULT_HOLD_IN_SQL_PARAGRAGH and wait is False:
+            print("\n".join(RESULT_HOLD_IN_SQL_PARAGRAGH))
+            clear_result_hold_in_sql_paragragh()
+
+        if onewait:
             self._waitings.append(step)
         
 
@@ -390,6 +457,12 @@ class TestRunner(object):
         go through. use NOBLOCK mode, the check cannot hange to wait step
         to complete.
         """
+        # originally we use for loop, but when we remove a element, it seems
+        # not working as we expected, so we just mark the to_delete item, and
+        # remove it at last
+
+        to_del = []
+
         for step in self._waitings:
             wait = False
             sqls = parse_sqls(step['sqls'])
@@ -413,13 +486,19 @@ class TestRunner(object):
             
             else:
                 # the step has completed either succeed, or fail
-                self._waitings.remove(step)
+                #self._waitings.remove(step)
+                to_del.append(step)
                 # if the tag in the errorsteps, it means the complete with
                 # fail, if not in errorsteps, should a empty error entry to
                 # errorsteps for error combination report(align with c code)
                 tag = step['step_tag']
                 if tag not in self._errorsteps:
                     self._errorsteps[step['step_tag']] = ''
+                    
+                self._complete_sql_paragragh_wait(step)
+
+        for step in to_del:
+            self._waitings.remove(step)
                 
         
     def _try_complete_step(self, step, flags):

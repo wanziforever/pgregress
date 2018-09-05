@@ -167,6 +167,7 @@ class PGAsyncConnection(object):
         :type sql: str
         :param sql: the sql clause to be executed
         """
+        # print("sendSQL sql", sql)
         self._async_cursor = self._conn.cursor()
         self._async_cursor.execute(sql)
         
