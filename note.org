@@ -11,6 +11,8 @@ when control-c to kill the automation, the tmp_instance/data will not be clear, 
 
 consider to raise a timeout exception instead of return None which stands for a timeout
 
+need to report the env data not config error at the beginning, since people will not notice it during the test running
+
 
 
 # fast command
