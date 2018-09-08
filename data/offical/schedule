@@ -77,4 +77,4 @@
 #test: vacuum-concurrent-drop
 #test: vacuum-reltuples
 
-test: partition-key-update-2
+test: timeouts

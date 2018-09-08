@@ -28,6 +28,7 @@ from testcase import TestCase
 from utils.sql import parse_sqls
 import time
 import logging
+import datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("TestRunner")
@@ -125,6 +126,11 @@ class TestRunner(object):
 
         self._clear_test_sessions()
         self._clear_maint_session()
+
+    def _clear_tmp_data(self):
+        self._waitings = []
+        self._backend_pids = []
+        self._errorsteps = {}
 
     def _load_setup_sqls(self):
         """get the sqls from testcase setup module, and execute them
@@ -232,6 +238,7 @@ class TestRunner(object):
             print()
             print("starting permutation: %s"
                   % " ".join([x['step_tag'] for x in steps]))
+            self._clear_tmp_data()
             self._load_setup_sqls()
             self._load_session_setup_sqls()
 
@@ -239,14 +246,14 @@ class TestRunner(object):
             for step in steps:
                 self._run_step_sqls(step)
 
-            self._try_complete_waiting_steps(STEP_RETRY)
+            self._final_complete_waiting_steps()
 
             self._load_session_teardown_sqls()
             self._load_teardown_sqls()
 
             round_num += 1
 
-    def _run_step_sqls(self, step) :
+    def _run_step_sqls(self, step):
         """ execute one step sqls, firstly need to know which session the
         sqls need to executed in.
 
@@ -400,6 +407,7 @@ class TestRunner(object):
             clear_result_hold_in_sql_paragragh()
 
         if onewait:
+            print("going to add step %s to waiting" % step['step_tag'])
             self._waitings.append(step)
         
 
@@ -460,7 +468,6 @@ class TestRunner(object):
         # originally we use for loop, but when we remove a element, it seems
         # not working as we expected, so we just mark the to_delete item, and
         # remove it at last
-
         to_del = []
 
         for step in self._waitings:
@@ -474,6 +481,7 @@ class TestRunner(object):
             onelinestr = prefer_sql_paragragh_step_status("<... completed>")
             if onelinestr:
                 print(onelinestr)
+                
             clear_sql_paragragh_step_status()
             
             if RESULT_HOLD_IN_SQL_PARAGRAGH:
@@ -499,8 +507,34 @@ class TestRunner(object):
 
         for step in to_del:
             self._waitings.remove(step)
+
+    def _final_complete_waiting_steps(self):
+        """check all the existing waiting steps whether some of them can
+        go through. since it is the final complete, use RETRY mode to wait
+        for all waiting step to complete
+        """
+        for step in self._waitings:
+            wait = False
+            sqls = parse_sqls(step['sqls'])
+            if len(sqls) > 1:
+                wait = self._try_complete_step(
+                    step, STEP_RETRY | STEP_IN_SQLBLOCK
+                    )
+            else:
+                wait = self._try_complete_step(step, STEP_RETRY)
+
+            onelinestr = prefer_sql_paragragh_step_status("<... completed>")
+            if onelinestr:
+                print(onelinestr)
                 
-        
+            clear_sql_paragragh_step_status()
+            
+            if RESULT_HOLD_IN_SQL_PARAGRAGH:
+                print("\n".join(RESULT_HOLD_IN_SQL_PARAGRAGH))
+                clear_result_hold_in_sql_paragragh()
+
+            self._report_error_message(step)
+                
     def _try_complete_step(self, step, flags):
         """try to complete a step whether it is a locked or unlocked for
         unlocked, the getResult will return the result very soon, and for
@@ -561,10 +595,12 @@ class TestRunner(object):
             # from the timeout case, for timeout it return two None
             if rows is not None:
                 break
-            
+
             # getResult timeout case
             if flags & STEP_NOBLOCK:
+                print("try_complete with noblock", step['step_tag'])
                 if self._check_lock(dbsession.get_backend_pid()):
+                    print('=============wait==============')
                     if not (flags & STEP_RETRY):
                         # very triky STEP_IN_SQLBLOCK and printed flag
                         # check for sqlblocks print workaround
@@ -599,6 +635,7 @@ class TestRunner(object):
         else:
             # very triky STEP_IN_SQLBLOCK and printed flag
             # check for sqlblocks print workaround
+
             if not (flags & STEP_IN_SQLBLOCK):
                 print("step %s: %s" % (step['step_tag'], step['sqls']))
             else:
@@ -628,6 +665,7 @@ class TestRunner(object):
             ).format(pid=pid, pids=','.join(pids))
         
         _, rows = self._maint_session.execute(sql)
+        print("check_lock", rows)
 
         return rows[0][0]
 
@@ -729,6 +767,15 @@ class TestRunner(object):
                 return 't'
             if value is None:
                 return ''
+            if isinstance(value, float):
+                # ugly convertion, but no choice, c version code output a
+                # floag with no .0 suffix for integer like value
+                value = str(value)
+                if value.endswith('.0'):
+                    return value[:-2]
+            elif isinstance(value, datetime.date):
+                return value.strftime('%m-%d-%Y')
+
             return value
                 
         #if not descriptions or not rows:
@@ -791,7 +838,6 @@ class TestRunner(object):
           to compliant with C version code, if there is only the error for
           specified step, just call the _report_error_message
         """
-
         tag = step['step_tag']
         extratags = [etag for etag in self._errorsteps.keys() if etag != tag]
 

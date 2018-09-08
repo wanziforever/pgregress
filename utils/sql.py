@@ -49,5 +49,6 @@ def parse_sqls(sqlstr):
             startpos = i+1
 
     if i > startpos:
-        sqls.append(sqlstr[startpos:i].strip())
+        sqls.append(sqlstr[startpos:].strip())
+
     return sqls

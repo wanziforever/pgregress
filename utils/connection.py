@@ -12,6 +12,17 @@ that the connection which is created without async=1 parameter will not
 support async function calls.
 """
 
+def simecolonCompletion(sql):
+    """add simecolon to a sql when it is not end with simecolon
+
+    :type sql: str
+    "param sql" the sql going to do completion
+    """
+    if sql.endswith(';'):
+        return sql
+    return sql + ';'
+    
+
 class PGConnection(object):
     """PostgresSQL sync mode connection class which provide some basic
     functionalities. some were wrapper of psycopg2, and some are re-designed
@@ -47,6 +58,7 @@ class PGConnection(object):
         logger.debug(
             'PGConnection::execute() Conn(%s): %s' % (self.name, sql)
             )
+        sql = simecolonCompletion(sql)
         cursor = self._conn.cursor()
         cursor.execute(sql)
         try:
@@ -143,6 +155,7 @@ class PGAsyncConnection(object):
         logger.debug(
             'PGConnection::execute() Conn(%s): %s' % (self.name, sql)
             )
+        sql = simecolonCompletion(sql)
         self._async_cursor = self._conn.cursor()
         self._async_cursor.execute(sql)
 
@@ -168,6 +181,7 @@ class PGAsyncConnection(object):
         :param sql: the sql clause to be executed
         """
         # print("sendSQL sql", sql)
+        sql = simecolonCompletion(sql)
         self._async_cursor = self._conn.cursor()
         self._async_cursor.execute(sql)
         
