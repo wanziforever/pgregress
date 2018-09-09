@@ -129,7 +129,6 @@ class TestRunner(object):
 
     def _clear_tmp_data(self):
         self._waitings = []
-        self._backend_pids = []
         self._errorsteps = {}
 
     def _load_setup_sqls(self):
@@ -407,7 +406,6 @@ class TestRunner(object):
             clear_result_hold_in_sql_paragragh()
 
         if onewait:
-            print("going to add step %s to waiting" % step['step_tag'])
             self._waitings.append(step)
         
 
@@ -598,9 +596,7 @@ class TestRunner(object):
 
             # getResult timeout case
             if flags & STEP_NOBLOCK:
-                print("try_complete with noblock", step['step_tag'])
                 if self._check_lock(dbsession.get_backend_pid()):
-                    print('=============wait==============')
                     if not (flags & STEP_RETRY):
                         # very triky STEP_IN_SQLBLOCK and printed flag
                         # check for sqlblocks print workaround
@@ -665,7 +661,6 @@ class TestRunner(object):
             ).format(pid=pid, pids=','.join(pids))
         
         _, rows = self._maint_session.execute(sql)
-        print("check_lock", rows)
 
         return rows[0][0]
 
