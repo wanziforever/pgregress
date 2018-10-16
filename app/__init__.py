@@ -18,6 +18,7 @@ from report import ProfileReport
 logger = logging.getLogger('application')
 _DATA_PATH = './tmp_instance/data'
 _LOG_PATH = './tmp_instance/log'
+_PORT = config.port
 
 RUNNER_LOG_TO_SCREEN = config.runner_output_to_streen
 
@@ -103,7 +104,7 @@ class Application(object):
         """
         DBServer.initDB(_DATA_PATH)
         DBServer.set_dbconf(_DATA_PATH,
-                            port=5433,
+                            port=_PORT,
                             log_autovacuum_min_duration='0',
                             log_checkpoints='on',
                             log_line_prefix="'%m [%p] %q%a '",
