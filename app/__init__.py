@@ -59,7 +59,8 @@ class Application(object):
         self._results_dir = os.path.join(self._outputs_dir, 'results')
         self._expected_dir = os.path.join(profile.path, 'expected')
         self._logs_dir = os.path.join(self._outputs_dir, 'logs')
-        self._report_file = os.path.join(self._outputs_dir, "report.html")
+        self._report_file_html = os.path.join(self._outputs_dir, "report.html")
+        self._report_file_text = os.path.join(self._outputs_dir, "report.txt")
         self._maint_session = None
         self._sessions = {}
         self.server = None
@@ -196,17 +197,17 @@ class Application(object):
 
         start_prompt()
 
-        from runner import TestRunner
         self._make_PGServer()
 
         import subprocess
         processes = []
+        env = os.environ.copy()
 
         for case in batch.tests():
             child = subprocess.Popen(
-                ['python', '-u', 'runner/testrunner.py', case.path()],
+                ['python3', '-u', 'runner/testrunner.py', case.path()],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                universal_newlines=True
+                universal_newlines=True, env=env
                 )
         
             result_file = os.path.join(self._results_dir,
@@ -259,7 +260,7 @@ class Application(object):
             print("  %s ... %s" % (testcase.name(), result))
             print("----------------------------------------+")
             
-        from runner import TestRunner
+
         self._make_PGServer()
         
         start_prompt()
@@ -287,7 +288,7 @@ class Application(object):
         # method instead.
         import subprocess
         child = subprocess.Popen(
-            ['python', '-u', 'runner/testrunner.py', testcase.path()],
+            ['python3', '-u', 'runner/testrunner.py', testcase.path()],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             universal_newlines=True
             )
@@ -388,5 +389,6 @@ class Application(object):
         self._report.set_end_time(
             self._end_time.strftime("%Y-%m-%d %H:%M:%S")
             )
-        self._report.generate_report(self._report_file)
+        self._report.generate_report_html(self._report_file_html)
+        self._report.generate_report_text(self._report_file_text)
         

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
@@ -10,8 +10,8 @@ logger = logging.getLogger('main')
 def help():
     print("<%s> " % sys.argv[0])
 
-logging.basicConfig(level=logging.DEBUG)
-#logging.basicConfig(level=logging.INFO)
+#logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger('main')
 test_data_dir = './data'

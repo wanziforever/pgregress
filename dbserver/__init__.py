@@ -139,8 +139,7 @@ class DBServer(object):
                      % (initdb, lib_path))
         env = {'LD_LIBRARY_PATH': lib_path}
         child = subprocess.run(
-            [initdb, '-D', data_path, '--no-clean', '--no-sync',
-             '--debug', '--no-locale'],
+            [initdb, '-D', data_path, '--no-clean', '--no-sync', '--no-locale'],
             env=env, stdout=subprocess.PIPE,
             universal_newlines=True,
             stderr=subprocess.PIPE)
@@ -149,9 +148,9 @@ class DBServer(object):
             logger.debug(child.stdout)
             logger.debug(child.stderr)
             # logger.error(child.stderr)
-            raise Exception(
-                "fail to do initdb for (%s)" % child.stderr
-                )
+            #raise Exception(
+            #    "fail to do initdb for (%s)" % child.stderr
+            #    )
         logger.debug(
             'database initialize successfully under %s' % data_path
             )

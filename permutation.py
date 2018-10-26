@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 sessions = [
     {"steps": ['s1_1', 's1_2', 's1_3']},

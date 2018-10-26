@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """Test Simulation tool implementation
 
@@ -23,43 +23,29 @@ compliant with the c code.
 __author__      = "denny wang (denny.wangliang@gmail.com)"
 __copyright__   = "Copyright 2018, Highgo LLC"
 
-from utils.connection import PGConnectionManager
+import os
+
+from utils.connection import PGConnectionManager, SQLBlockExecutorHelper
 from testcase import TestCase
 from utils.sql import parse_sqls
+from testcase.modules import SQLBlock
 import time
 import logging
 import datetime
 
+from exc import (
+    WaitDataTimeoutException,
+    WaitDataErrorException,
+    WaitDataLockedException
+    )
+
 logging.basicConfig(level=logging.INFO)
+#logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("TestRunner")
 
 STEP_NOBLOCK = 0x1
 STEP_RETRY = 0x2
-STEP_IN_SQLBLOCK = 0x4
 
-# involved for pasring sql paragragh function
-RESULT_HOLD_IN_SQL_PARAGRAGH = []
-STEP_HOLD_IN_SQL_PARAGRAGH = []
-STEP_WAIT_IN_SQL_PARAGRAGH = {}
-
-def prefer_sql_paragragh_step_status(keyword):
-    for oneline in STEP_HOLD_IN_SQL_PARAGRAGH:
-        if oneline.find(keyword) > 0:
-            return oneline
-    if STEP_HOLD_IN_SQL_PARAGRAGH:
-        return STEP_HOLD_IN_SQL_PARAGRAGH[0]
-    return None
-
-def clear_sql_paragragh_step_status():
-    global STEP_HOLD_IN_SQL_PARAGRAGH
-    STEP_HOLD_IN_SQL_PARAGRAGH = []
-
-def clear_result_hold_in_sql_paragragh():
-    global RESULT_HOLD_IN_SQL_PARAGRAGH
-    RESULT_HOLD_IN_SQL_PARAGRAGH = []
-
-def register_sql_paragragh_wait(step_tag, index):
-    STEP_WAIT_IN_SQL_PARAGRAGH[step_tag] = index
 
 class TestRunner(object):
     """Test case running tool
@@ -130,23 +116,29 @@ class TestRunner(object):
     def _clear_tmp_data(self):
         self._waitings = []
         self._errorsteps = {}
+        self._testcase.reset()
 
     def _load_setup_sqls(self):
         """get the sqls from testcase setup module, and execute them
         """
         logger.debug("LOADING SETUP SQLS")
-        # fetch sqls from testcase, and send it to maint session
-        for sql in self._testcase.setups():
-            descriptions, rows = self._maint_session.execute(sql)
-            self._output_db_result(descriptions, rows)
+        for setup in self._testcase.setups():
+            helper = setup.sqlhelper()
+            helper.execute(self._maint_session)
+            output = helper.output()
+            if output:
+                print(output)
 
     def _load_teardown_sqls(self):
         """get the sqls from testcase teardown module, and execute them
         """
         logger.debug("LOADING TEARDOWN SQLS")
-        # fetch sqls from teardown, and send it to maint session
-        for sql in self._testcase.teardowns():
-            self._maint_session.execute(sql)
+        for teardown in self._testcase.teardowns():
+            helper = teardown.sqlhelper()
+            helper.execute(self._maint_session)
+            output = helper.output()
+            if output:
+                print(output)
 
     def _load_session_setup_sqls(self):
         """get the sqls from each session level setup module, and execute
@@ -155,14 +147,17 @@ class TestRunner(object):
         """
         logger.debug("LOADING SESSION SETUP SQLS")
         for setup in self._testcase.session_setups():
-            session_tag = setup['session_tag']
+            session_tag = setup.session()
             dbsession = self._get_session_by_tag(session_tag)
             if dbsession is None:
                 raise Exception("cannot find session by tag %s"
                                 % session_tag)
-            for sql in setup['sqls']:
-                descriptions, rows = dbsession.execute(sql)
-                self._output_db_result(descriptions, rows)
+            
+            helper = setup.sqlhelper()
+            helper.execute(dbsession)
+            output = helper.output()
+            if output:
+                print(output)
 
     def _load_session_teardown_sqls(self):
         """get the sqls from each session level teardown model, and execute
@@ -171,15 +166,17 @@ class TestRunner(object):
         """
         logger.debug("LOADING SESSION TEARDOWN SQLS")
         # fetch session teardown sqls from test case
-        for setup in self._testcase.session_teardowns():
-            session_tag = setup['session_tag']
+        for teardown in self._testcase.session_teardowns():
+            session_tag = teardown.session()
             dbsession = self._get_session_by_tag(session_tag)
             if dbsession is None:
                 raise Exception("cannot find session by tag %s"
                                 % session_tag)
-            for sql in setup['sqls']:
-                descriptions, rows = dbsession.execute(sql)
-                self._output_db_result(descriptions, rows)
+            helper = teardown.sqlhelper()
+            helper.execute(dbsession)
+            output = helper.output()
+            if output:
+                print(output)
 
     def _start_dry_run(self):
         """only print the sqls for setup, teardown, permutation in sequence
@@ -192,32 +189,26 @@ class TestRunner(object):
         
         for steps in self._testcase.next_permutation_steps():
             print("starting permutation: %s"
-                  % " ".join([x['step_tag'] for x in steps]))
-            print("LOADING SETUP SQLS")
-            for sql in self._testcase.setups():
-                print("Session(%s): %s" % ("Maint", sql))
+                  % " ".join([step.tag() for step in steps]))
+            print("==LOADING SETUP SQLS==")
+            for setup in self._testcase.setups():
+                print("Session(%s): %s" % ("Maint", setup.sql()))
 
-            print("LOADING SESSION SETUP SQLS")
+            print("==LOADING SESSION SETUP SQLS==")
             for setup in self._testcase.session_setups():
-                session_tag = setup['session_tag']
-                for sql in setup['sqls']:
-                    print("Session(%s): %s" % (session_tag, sql))
+                print("Session(%s): %s" % (setup.session(), setup.sql()))
 
-            print('LOADING PERMUTATION STEPS SQlS')
+            print('==LOADING PERMUTATION STEPS SQlS==')
             for step in steps:
-                session_tag = step['session_tag']
-                sql = step['sqls']
-                print("Session(%s): %s" % (session_tag, sql))
+                print("Session(%s): %s" % (step.session(), step.sql()))
 
-            print("LOADING SESSION TEARDOWN SQLS")
-            for setup in self._testcase.session_teardowns():
-                session_tag = setup['session_tag']
-                for sql in setup['sqls']:
-                    print("Session(%s): %s" % (session_tag, sql))
+            print("==LOADING SESSION TEARDOWN SQLS==")
+            for teardown in self._testcase.session_teardowns():
+                print("Session(%s): %s" % (teardown.session(), teardown.sql()))
 
-            print("LOADING TEARDOWN SQLS")
-            for sql in self._testcase.teardowns():
-                print("Session(%s): %s" % ("Maint", sql))
+            print("==LOADING TEARDOWN SQLS==")
+            for teardown in self._testcase.teardowns():
+                print("Session(%s): %s" % ("Maint", teardown.sql()))
 
             print()
             round_num += 1
@@ -236,7 +227,7 @@ class TestRunner(object):
             # print("ROUND %d START" % round_num)
             print()
             print("starting permutation: %s"
-                  % " ".join([x['step_tag'] for x in steps]))
+                  % " ".join([step.tag() for step in steps]))
             self._clear_tmp_data()
             self._load_setup_sqls()
             self._load_session_setup_sqls()
@@ -290,59 +281,27 @@ class TestRunner(object):
             self._try_complete_waiting_steps(STEP_NOBLOCK | STEP_RETRY)
             self._report_multiple_error_messages(oldstep)
 
-        session_tag = step['session_tag']
+        session_tag = step.session()
         dbsession = self._get_session_by_tag(session_tag)
         if dbsession is None:
             raise Exception(
                 "cannot find session by tag %s" % session_tag
                 )
 
-        sqls = parse_sqls(step['sqls'])
-        onelinesql = ''
+        helper = step.sqlhelper()
+        wait = False
+        #while not helper.is_completed():
+        #    dbsession.sendSQL(helper)
+        #    wait = self._try_complete_step(step, STEP_NOBLOCK)
+        #    if wait:
+        #        break
+        helper.sendSQL(dbsession, self._check_lock)
         
-        if len(sqls) == 1:
-            onelinesql = sqls[0]
-            # async call, no wait for sync result
-            #print("%s:%s" % (session_tag, step['step_tag']), "=>", onelinesql)
-            dbsession.sendSQL(onelinesql)
-            wait = self._try_complete_step(step, STEP_NOBLOCK)
-
-        elif len(sqls) > 1:
-            # here there is limitation, all the sub sqls will sendout, but
-            # if the session is blocked by one of the sub sqls, the later
-            # sub has been send, it is not clear what will happen
-
-            # sinece each call to try_complete_step will trigger a step
-            # information print, we need to flag to indicate only print
-            # once for current step
-            wait = False
-            for idx in range(len(sqls)):
-                onelinesql = sqls[idx]
-                #print("going to send sql", onelinesql)
-                dbsession.sendSQL(onelinesql)
-                wait = self._try_complete_step(
-                    step, STEP_NOBLOCK | STEP_IN_SQLBLOCK
-                    )
-                if wait:
-                    #print("sql hold for paragragh", onelinesql)
-                    if idx < len(sqls) - 1:
-                        register_sql_paragragh_wait(step['step_tag'], idx+1)
-                    break
-                    
-            # if there is any waiting, print it, if not print normal step
-            onelinestr = prefer_sql_paragragh_step_status('<waiting ...')
-            if onelinestr:
-                print(onelinestr)
-            clear_sql_paragragh_step_status()
-                
-            if RESULT_HOLD_IN_SQL_PARAGRAGH and wait is False:
-                print("\n".join(RESULT_HOLD_IN_SQL_PARAGRAGH))
-                clear_result_hold_in_sql_paragragh()
-
-        else:
-            raise Exception("fail to parse sql, no sql can be parsed out")
-
-
+        try:
+            wait = self._new_try_complete_step(step, STEP_NOBLOCK)
+        except WaitDataTimeoutException as e:
+            raise
+        
         # after execute a step, check wether it can make some waiting
         # steps to go through
         self._try_complete_waiting_steps(STEP_NOBLOCK | STEP_RETRY)
@@ -350,64 +309,6 @@ class TestRunner(object):
 
         if wait:
             self._waitings.append(step)
-
-    def _complete_sql_paragragh_wait(self, step):
-        """complete the sqls unexecuted in a step due to wait
-
-        there are some complex sql paragragh steps, and maybe one of
-        the sqls will block, the later ones will block, too, at blocking
-        time, we can not send the more sqls, database will return
-        `execute cannot be used while an asynchronous query is underway`
-        when there is some sql left when meet waiting, we have recorded
-        it some place. and now we want to resume it when just when the
-        last wait sql unblocked
-
-        :type step: dict
-        :param step: the step want to continue the later sqls
-        """
-        tag = step['step_tag']
-        if tag not in STEP_WAIT_IN_SQL_PARAGRAGH:
-            return
-
-        idx = STEP_WAIT_IN_SQL_PARAGRAGH.pop(tag)
-        
-        sqls = parse_sqls(step['sqls'])
-        if idx >= len(sqls) - 1:
-            # print("last sql in waiting, this case should not have register"
-            #      " the sql paragragh")
-            return
-
-        dbsession = self._get_session_by_tag(session_tag)
-        if dbsession is None:
-            raise Exception(
-                "cannot find session by tag %s" % session_tag
-                )
-
-        onewait = False
-        for lateridx in range(idx, len(sqls)):
-            onelinesql = sqls[lateridx]
-            dbsession.sendSQL(onelinesql)
-            onewait = self._try_complete_step(
-                step, STEP_NOBLOCK | STEP_IN_SQLBLOCK
-                )
-            if onewait:
-                #print("sql hold for paragragh", onelinesql)
-                if idx < len(sqls) - 1:
-                    register_sql_paragragh_wait(step['step_tag'], idx+1)
-                break
-
-        onelinestr = prefer_sql_paragragh_step_status('<waiting ...')
-        if onelinestr:
-            print(onelinestr)
-        clear_sql_paragragh_step_status()
-                
-        if RESULT_HOLD_IN_SQL_PARAGRAGH and wait is False:
-            print("\n".join(RESULT_HOLD_IN_SQL_PARAGRAGH))
-            clear_result_hold_in_sql_paragragh()
-
-        if onewait:
-            self._waitings.append(step)
-        
 
     def _complete_previous_steps(self, step):
         """Check whether the session that needs to perform the next step is
@@ -433,27 +334,14 @@ class TestRunner(object):
         """
         oldstep = None
         for wait_step  in self._waitings:
-            if step['session_tag'] != wait_step['session_tag']:
+            if step.session() != wait_step.session():
                 continue
             # normally the waiting list only have one entry for one
             # session, but we just keep the below code in the for
             # loop in case more session found
             oldstep = wait_step
-            sqls = parse_sqls(wait_step['sqls'])
-            if len(sqls) > 1:
-                self._try_complete_step(oldstep, STEP_RETRY | STEP_IN_SQLBLOCK)
-            else:
-                self._try_complete_step(oldstep, STEP_RETRY)
+            self._new_try_complete_step(oldstep, STEP_RETRY)
 
-            onelinestr = prefer_sql_paragragh_step_status("<... completed>")
-            if onelinestr:
-                print(onelinestr)
-            clear_sql_paragragh_step_status()
-
-            if RESULT_HOLD_IN_SQL_PARAGRAGH:
-                print("\n".join(RESULT_HOLD_IN_SQL_PARAGRAGH))
-                clear_result_hold_in_sql_paragragh()
-                
             self._waitings.remove(oldstep)
 
         return oldstep
@@ -470,22 +358,8 @@ class TestRunner(object):
 
         for step in self._waitings:
             wait = False
-            sqls = parse_sqls(step['sqls'])
-            if len(sqls) > 1:
-                wait = self._try_complete_step(step, flags | STEP_IN_SQLBLOCK)
-            else:
-                wait = self._try_complete_step(step, flags)
+            wait = self._new_try_complete_step(step, flags)
 
-            onelinestr = prefer_sql_paragragh_step_status("<... completed>")
-            if onelinestr:
-                print(onelinestr)
-                
-            clear_sql_paragragh_step_status()
-            
-            if RESULT_HOLD_IN_SQL_PARAGRAGH:
-                print("\n".join(RESULT_HOLD_IN_SQL_PARAGRAGH))
-                clear_result_hold_in_sql_paragragh()
-                
             if wait:
                 # still waiting, just keep it in the wait list
                 continue
@@ -497,11 +371,9 @@ class TestRunner(object):
                 # if the tag in the errorsteps, it means the complete with
                 # fail, if not in errorsteps, should a empty error entry to
                 # errorsteps for error combination report(align with c code)
-                tag = step['step_tag']
+                tag = step.tag()
                 if tag not in self._errorsteps:
-                    self._errorsteps[step['step_tag']] = ''
-                    
-                self._complete_sql_paragragh_wait(step)
+                    self._errorsteps[step.tag()] = ''
 
         for step in to_del:
             self._waitings.remove(step)
@@ -513,24 +385,7 @@ class TestRunner(object):
         """
         for step in self._waitings:
             wait = False
-            sqls = parse_sqls(step['sqls'])
-            if len(sqls) > 1:
-                wait = self._try_complete_step(
-                    step, STEP_RETRY | STEP_IN_SQLBLOCK
-                    )
-            else:
-                wait = self._try_complete_step(step, STEP_RETRY)
-
-            onelinestr = prefer_sql_paragragh_step_status("<... completed>")
-            if onelinestr:
-                print(onelinestr)
-                
-            clear_sql_paragragh_step_status()
-            
-            if RESULT_HOLD_IN_SQL_PARAGRAGH:
-                print("\n".join(RESULT_HOLD_IN_SQL_PARAGRAGH))
-                clear_result_hold_in_sql_paragragh()
-
+            wait = self._new_try_complete_step(step, STEP_RETRY)
             self._report_error_message(step)
                 
     def _try_complete_step(self, step, flags):
@@ -574,40 +429,32 @@ class TestRunner(object):
         :returns: indicate whether the step is lock blocked, others cases
                   return False
         """
-        session_tag = step['session_tag']
+        session_tag = step.session()
         dbsession = self._get_session_by_tag(session_tag)
-        block_time = 0.1 # block 100ms
+        block_time = 1 # block 100ms
         start_time = time.time()
-        descriptions, rows = [], []
         canceled = False
+        timeout = False
+        sqlhelper = step.sqlhelper()
         while True:
             try:
-                descriptions, rows = dbsession.getResult(block_time)
+                timeout = dbsession.getResult(sqlhelper, block_time)
             except Exception as e:
                 # failure is also a complete branch, and print complete
-                self._errorsteps[step['step_tag']] = str(e)
+                self._errorsteps[step.tag()] = str(e)
                 #return False
                 break
 
             # the getResult may return a empty result, this is different
-            # from the timeout case, for timeout it return two None
-            if rows is not None:
+            # from the timeout case, for timeout it return False
+            if timeout is True:
                 break
 
             # getResult timeout case
             if flags & STEP_NOBLOCK:
                 if self._check_lock(dbsession.get_backend_pid()):
                     if not (flags & STEP_RETRY):
-                        # very triky STEP_IN_SQLBLOCK and printed flag
-                        # check for sqlblocks print workaround
-                        if not (flags & STEP_IN_SQLBLOCK):
-                            print("step %s: %s <waiting ...>"
-                              % (step['step_tag'], step['sqls']))
-                        else:
-                           STEP_HOLD_IN_SQL_PARAGRAGH.append(
-                               "step %s: %s <waiting ...>"
-                                     % (step['step_tag'], step['sqls'])
-                               )
+                        print("step %s: %s <waiting ...>" % (step.tag(), step.sql()))
                     return True
                 
             now = time.time()
@@ -617,29 +464,52 @@ class TestRunner(object):
 
             if now - start_time > 75:
                 raise Exception("step %s timeout after 75 seconds"
-                                % step["step_tag"])
+                                % step.tag())
                         
         if flags & STEP_RETRY:
-            # very triky STEP_IN_SQLBLOCK and printed flag
-            # check for sqlblocks print workaround
-            if not (flags & STEP_IN_SQLBLOCK):
-                print("step %s: <... completed>" % step['step_tag'])
-            else:
-                STEP_HOLD_IN_SQL_PARAGRAGH.append(
-                    "step %s: <... completed>" % step['step_tag']
-                    )
+            print("step %s: <... completed>" % step.tag())
+
         else:
             # very triky STEP_IN_SQLBLOCK and printed flag
             # check for sqlblocks print workaround
 
-            if not (flags & STEP_IN_SQLBLOCK):
-                print("step %s: %s" % (step['step_tag'], step['sqls']))
-            else:
-                STEP_HOLD_IN_SQL_PARAGRAGH.append(
-                    "step %s: %s" % (step['step_tag'], step['sqls'])
-                    )
+            print("step %s: %s" % (step.tag(), step.sql()))
 
-        self._output_db_result(descriptions, rows, flags)
+        print(sqlhelper.get_result().output())
+        
+        return False
+
+    def _new_try_complete_step(self, step, flags):
+        session_tag = step.session()
+        dbsession = self._get_session_by_tag(session_tag)
+        sqlhelper = step.sqlhelper()
+        while True:
+            try:
+                sqlhelper.try_complete_current_execution(
+                    dbsession, self._check_lock
+                    )
+                break
+            except WaitDataLockedException as e:
+                if flags & STEP_NOBLOCK:
+                    if not (flags & STEP_RETRY):
+                        print("step %s: %s <waiting ...>" %
+                              (step.tag(), step.raw_sql()))
+                    return True
+            except WaitDataTimeoutException as e:
+                raise
+            except WaitDataErrorException as e:
+                self._errorsteps[step.tag()] = str(e)
+                break
+
+        if flags & STEP_RETRY:
+            print("step %s: <... completed>" % step.tag())
+        else:
+            print("step %s: %s" % (step.tag(), step.raw_sql()))
+
+        output = sqlhelper.output()
+        if output:
+            print(output)
+        
         return False
 
     def _check_lock(self, pid):
@@ -659,9 +529,10 @@ class TestRunner(object):
             "SELECT pg_catalog.pg_isolation_test_session_is_blocked"
             "({pid}, '{{{pids}}}')"
             ).format(pid=pid, pids=','.join(pids))
-        
-        _, rows = self._maint_session.execute(sql)
 
+        result = self._maint_session.execute(sql)
+        
+        rows = result.rows
         return rows[0][0]
 
     def _make_maint_session(self):
@@ -677,7 +548,8 @@ class TestRunner(object):
         # in PG code, we cannot see the autocommit setting, because the
         # PQConnect is used, and PGConnect is defalutly autocommit.
         self._maint_session.autocommit(True)
-        self._maint_session.execute("SET client_min_messages = warning;")
+        sql = "SET client_min_messages = warning;"
+        self._maint_session.execute(sql)
 
     def _clear_test_sessions(self):
         """kill the test related db connections
@@ -719,9 +591,10 @@ class TestRunner(object):
             # autocommit property, since the default is autocommit
             # self._sessions[tag].autocommit(True)
             self._sessions[tag].set_name(tag)
-            self._sessions[tag].execute(
-                "SET client_min_messages = warning;"
-                )
+
+            sql = "SET client_min_messages = warning;"
+            
+            self._sessions[tag].execute(sql)
 
     def _collect_backend_pids(self):
         """get all the backend pid related to permutation sessions and
@@ -739,81 +612,13 @@ class TestRunner(object):
             if backendpid:
                 self._backend_pids.append(backendpid)
 
-    def _output_db_result(self, descriptions, rows, flags=0):
-        """print the result to screen, the result is got from database
-
-        :type descriptions: list
-        :param descriptions: the column names in the result
-
-        :type rows: list of lists
-        :param rows: entry rows for the result of a db query
-          
-        """
-
-        def convert_result(value):
-            """currently python has different value print as c style, below
-            is the convertion to do:
-            * python style False/True to C style f/t
-            * python style None to C style `[nil]`(blank)
-            """
-            if value is False:
-                return 'f'
-            if value is True:
-                return 't'
-            if value is None:
-                return ''
-            if isinstance(value, float):
-                # ugly convertion, but no choice, c version code output a
-                # floag with no .0 suffix for integer like value
-                value = str(value)
-                if value.endswith('.0'):
-                    return value[:-2]
-            elif isinstance(value, datetime.date):
-                return value.strftime('%m-%d-%Y')
-
-            return value
-                
-        #if not descriptions or not rows:
-        #    return
-        if descriptions is None or rows is None:
-            return
-
-        if len(descriptions) == 0:
-            return
-
-        outputs = []
-        line = ""
-        for desc in descriptions:
-            #print("%-15s" % desc, end='')
-            line += ("%-15s" % desc)
-        outputs.append(line)
-        line = ""
-        outputs.append("")
-        #print("\n")
-
-        for row in rows:
-            line = ""
-            for t in row:
-                t = convert_result(t)
-                #print("%-15s" % t, end='')
-                line += ("%-15s" % t)
-            outputs.append(line)
-            #outputs.append('')
-
-        pstr = "\n".join(outputs)
-        # if it is in a SQL BLOCK, hold the print to a global holder
-        if flags & STEP_IN_SQLBLOCK:
-            RESULT_HOLD_IN_SQL_PARAGRAGH.append(pstr)
-        else:
-            print(pstr)
-
     def _report_error_message(self, step):
         """a error report method only report the target step error mssage
 
         :type step: dict
         :param step: session step data which is parsed from testcase data
         """
-        tag = step['step_tag']
+        tag = step.tag()
         if tag in self._errorsteps:
             print(self._errorsteps[tag])
             del self._errorsteps[tag]
@@ -833,7 +638,7 @@ class TestRunner(object):
           to compliant with C version code, if there is only the error for
           specified step, just call the _report_error_message
         """
-        tag = step['step_tag']
+        tag = step.tag()
         extratags = [etag for etag in self._errorsteps.keys() if etag != tag]
 
         if len(extratags) == 0:

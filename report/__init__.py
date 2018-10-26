@@ -72,7 +72,7 @@ class ProfileReport(object):
             else:
                 self._fail += 1
 
-    def generate_report(self, report_position):
+    def generate_report_html(self, report_position):
         templateLoader = jinja2.FileSystemLoader(searchpath="./app")
         templateEnv = jinja2.Environment(loader=templateLoader)
         TEMPLATE_FILE = "report_template.html"
@@ -94,3 +94,41 @@ class ProfileReport(object):
             fd.write(content)
 
         print("test report was generated to", report_position)
+
+    def generate_report_text(self, report_position):
+        self._gen_statistic()
+        params = {
+            "profile": self._title,
+            "columns": self._columns,
+            "data": self._case_info,
+            "start": self._start_time,
+            "end": self._end_time,
+            "total": self._total,
+            "succeed": self._succeed,
+            "fail": self._fail
+            }
+        with open(report_position, 'w') as fd:
+            s = (
+                "{profile} test report\n"
+                "start time: {starttime}\n"
+                "end time:   {endtime}\n\n"
+                ).format(profile=self._title, starttime=self._start_time,
+                       endtime=self._end_time)
+            
+            fd.write(s)
+
+            s = []
+
+            s.append("".join(["%-60s"%column for column in self._columns]))
+
+            s.append("\n")
+
+            for case in self._case_info:
+                s.append("".join(["%-60s"%item for item in case]))
+                
+
+            fd.write("\n".join(s))
+            print("test report was generated to", report_position)
+
+            
+            

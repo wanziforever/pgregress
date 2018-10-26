@@ -1,3 +1,2 @@
 export PYTHONPATH="$PWD"
-export PATH=/pgdata/installation/bin:$PATH
-export LD_LIBRARY_PATH=/pgdata/installation/lib:$LD_LIBRARY_PATH
+export PATH=$PATH:/mnt/study/pg/installation/bin

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 parse the test case file, and generate the related structure
@@ -15,6 +15,10 @@ parse the test case file, and generate the related structure
 import json
 import ply.yacc as yacc
 from .case_tokens import tokens
+
+from .modules import (SQLBlock, StepModule, SessionModule, SetupModule,
+                      TearDownModule, Permutation)
+
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
 #logger = logging.getLogger()
@@ -22,7 +26,7 @@ from .case_tokens import tokens
 statements = {
     'setup': [],
     'teardown': [],
-    'sessions': {},
+    'sessions': [],
     'permutations': [],
     # here use a session sequence is the workaround for permutation
     # generation, the aim is to keep the same sequence of the permutation
@@ -33,7 +37,7 @@ statements = {
     }
 
 def p_statement_expression(p):
-    '''statement : setup_multiple teardown_statement session_statement
+    '''statement : setup_multiple teardown_multiple session_statement
                  | statement session_statement
                  | statement permutation_statement'''
 
@@ -61,80 +65,105 @@ def p_setup_multiple(p):
         if p[1] is None:
             p[0] = []
         else:
-            p[0] = p[1]
+            p[0] = [ p[1] ]
+        
+    elif len(p) == 3:
+        tmp = list(p[1])
+        tmp.append(p[2])
+        p[0] = tmp
+
+# setup, here is just a temp solution
+def p_setup_statement_expression(p):
+    '''setup_statement : SETUP SQLCLAUSE'''
+    module = SetupModule()
+    module.set_sql_block(SQLBlock(p[2]))
+    p[0] = module
+
+def p_teardown_multiple(p):
+    '''teardown_multiple : teardown_multiple teardown_statement
+                         | teardown_statement
+                         | empty'''
+    if len(p) == 2:
+        if p[1] is None:
+            p[0] = []
+        else:
+            p[0] = [ p[1] ]
         
     elif len(p) == 3:
         tmp = p[1]
         tmp.extend(p[2])
         p[0] = tmp
 
-# actually the comments before setup is for the whole file not only for
-# setup, here is just a temp solution
-def p_setup_statement_expression(p):
-    '''setup_statement : SETUP SQLCLAUSE'''
-    p[0] = [p[2]]
-
-#def p_sqlblock_clause(p):
-#    '''sqlblock : sqlblock SQLCLAUSE
-#                | SQLCLAUSE'''
-#    if len(p) == 2:
-#        p[0] = []
-#        p[0].append(p[1])
-#    elif len(p) == 3:
-#        tmp = p[1]
-#        tmp.append(p[2])
-#        p[0] = tmp
-
 def p_teardown_statement_expression(p):
-    '''teardown_statement : TEARDOWN SQLCLAUSE
-                          | empty'''
+    '''teardown_statement : TEARDOWN SQLCLAUSE'''
     # if there will be a teardown in session, will do the same setup
-    if len(p) == 3:
-        p[0] = [p[2]]
-    else:
-        p[0] = []
+    module = TearDownModule()
+    module.set_sql_block(SQLBlock(p[2]))
+    p[0] = module
 
 def p_session_statement_expression(p):
     '''session_statement : SESSION ID continue_steps_expression'''
     tag = p[2].strip('\"')
-    statements['sessions'][tag] = {
-        'steps': p[3]
-        }
-    print("----------------------------------------------")
-    statements['session_sequence'].append(tag)
-    printt(statements)
+    session_module = SessionModule(tag)
+    #statements['sessions'][tag] = {
+    #    'steps': p[3]
+    #    }
+    #statements['session_sequence'].append(tag)
+    session_steps = p[3]
+    for step in session_steps:
+        step.set_session(tag)
+        session_module.add_step(step)
+        
+    statements['sessions'].append(session_module)
 
 def p_session_statement_setup_expression(p):
     '''session_statement : SESSION ID setup_statement continue_steps_expression'''
     tag = p[2].strip('\"')
-    setup = p[3]
-    statements['sessions'][tag] = {
-        'steps': p[4],
-        'setup': setup
-        }
-    statements['session_sequence'].append(tag)
+    session_module = SessionModule(tag)
+    setup_module = p[3]
+    #statements['sessions'][tag] = {
+    #    'steps': p[4],
+    #    'setup': setup
+    #    }
+    #statements['session_sequence'].append(tag)
+    session_steps = p[4]
+    session_module.set_setup(setup_module)
+    setup_module.set_session(tag)
+    for step in session_steps:
+        step.set_session(tag)
+        session_module.add_step(step)
+    statements['sessions'].append(session_module)
 
 def p_session_statement_setup_teardown_expression(p):
     '''session_statement : SESSION ID setup_statement continue_steps_expression teardown_statement'''
     tag = p[2].strip('\"')
-    setup = p[3]
-    teardown = p[5]
-    statements['sessions'][tag] = {
-        'steps': p[4],
-        'setup': setup,
-        'teardown': teardown
-        }
-    statements['session_sequence'].append(tag)
+    session_module = SessionModule(tag)
+    setup_module = p[3]
+    teardown_module = p[5]
+    session_steps = p[4]
+    session_module.set_setup(setup_module)
+    setup_module.set_session(tag)
+    session_module.set_teardown(teardown_module)
+    teardown_module.set_session(tag)
+    for step in session_steps:
+        step.set_session(tag)
+        session_module.add_step(step)
+
+    statements['sessions'].append(session_module)
 
 def p_session_statement_teardown_expression(p):
     '''session_statement : SESSION ID continue_steps_expression teardown_statement'''
     tag = p[2].strip('\"')
-    teardown = p[4]
-    statements['sessions'][tag] = {
-        'steps': p[3],
-        'teardown': teardown
-        }
-    statements['session_sequence'].append(tag)
+    session_module = SessionModule(tag)
+    session_steps = p[3]
+    teardown_module = p[4]
+    session_module.set_teardown(teardown_module)
+    teardown_module.set_session(tag)
+    for step in session_steps:
+        step.set_session(tag)
+        session_module.add_step(step)
+
+    statements['sessions'].append(session_module)
     
 def p_continue_steps_expression_sqlblock(p):
     '''continue_steps_expression : continue_steps_expression step
@@ -150,25 +179,26 @@ def p_continue_steps_expression_sqlblock(p):
         
 def p_step_sqlblock(p):
     '''step : STEP ID SQLCLAUSE'''
-    p[0] = {
-        'sqls': p[3],
-        'tag': p[2].strip('\"')
-        }
+    tag = p[2].strip('\"')
+    module = StepModule(tag)
+    module.set_sql_block(SQLBlock(p[3]))
+    p[0] = module
 
 def p_permutation_statement(p):
     '''permutation_statement : permutation_expression'''
     statements['permutations'].append(p[1])
-    #p[0] = p[1]
 
 def p_permutation_expression_id(p):
     '''permutation_expression : PERMUTATION ID
                               | permutation_expression ID'''
     tag = p[2].strip('\"')
-    if isinstance(p[1], list):
-        p[1].append(tag)
+    if isinstance(p[1], Permutation):
+        p[1].add_step_tag(tag)
         p[0] = p[1]
     else:
-        p[0] = [tag]
+        from .modules import new_permutation_class
+        p[0] = new_permutation_class()
+        p[0].add_step_tag(tag)
 
 def p_error(p):
     print("Syntax error in input!")

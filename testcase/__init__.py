@@ -2,6 +2,8 @@ import os
 import json
 import logging
 from .case_parser import parse_testcase_structure
+from .modules import (SQLBlock, StepModule, SessionModule, SetupModule,
+                      TearDownModule, Permutation)
 
 logger = logging.getLogger("TestCase")
 
@@ -49,18 +51,30 @@ class TestCase(object):
         self._commands_sequence = []
         self._setups = []
         self._teardowns = []
-        self._sessions = {}
+        self._sessions = []
         self._permutations = []
-        self._session_sequence = []
         # here is just a cache, also can do a list search each form the
         # sessions  each time
         self._step_mapping = {}
+
+    def reset(self):
+        for setup in self.setups():
+            setup.reset()
+
+        for teardown in self.teardowns():
+            teardown.reset()
+
+        for session in self._sessions:
+            session.reset()
+        
 
     def build(self):
         if self._structure is not None:
             return
         self._read_file_content()
         self._structure = parse_testcase_structure(self._file_content)
+        #print("---------------------------")
+        #print(self._structure)
         self._build_internals()
         self._build_implicit_permutations()
 
@@ -72,9 +86,8 @@ class TestCase(object):
 
         self._setups = list(self._structure['setup'])
         self._teardowns = list(self._structure['teardown'])
-        self._sessions = dict(self._structure['sessions'])
+        self._sessions = list(self._structure['sessions'])
         self._permutations = list(self._structure['permutations'])
-        self._session_sequence = list(self._structure['session_sequence'])
 
     def __str__(self):
         """reurn two types of case description, one is builded version,
@@ -85,7 +98,7 @@ class TestCase(object):
         
         setup_num = len(self._setups)
         teardown_num = len(self._teardowns)
-        session_num = len(self._sessions.keys())
+        session_num = len(self._sessions)
         permutation_num = len(self._permutations)
         
         return ("caseName: %s; "
@@ -141,13 +154,13 @@ class TestCase(object):
         # ---above is the old simple permutation algorithm, below is new
         # ---which is wrap the C version to python with the same output
         
-        def permutation(sessions, nsteps, steps):
+        def compute_permutations(sessions, nsteps, steps):
             found = False
             for i in range(nsessions):
                 if piles[i] < len(sessions[i]):
                     steps[nsteps] = sessions[i][piles[i]]
                     piles[i] += 1
-                    yield from permutation(sessions, nsteps+1, steps)
+                    yield from compute_permutations(sessions, nsteps+1, steps)
                     piles[i] -= 1
                     found = True
 
@@ -155,25 +168,24 @@ class TestCase(object):
                 #self._permutations.append(list(steps))
                  yield list(steps)
 
-        sessions = []
+        groups_of_tags = []
         nsteps = 0
         # MUST use the session sequence as the sort keys, shince it is the
         # session definition sequence which will compliant with offical
         # implementation, it will generate same output data, it not, the
         # different sequence will make new output which is different from
         # expected output
-        sorted_keys = self._session_sequence
-        for tag in sorted_keys:
-            data = self._sessions[tag]
-            session_tags = [step['tag'] for step in data['steps']]
-            nsteps += len(session_tags)
-            sessions.append(session_tags)
+        for session in self._sessions:
+            step_tags = session.step_tags()
+            nsteps += len(step_tags)
+            groups_of_tags.append(step_tags)
         
-        nsessions = len(sessions)
+        nsessions = len(self._sessions)
         steps = [''] * nsteps
         piles = [0] * nsessions
-        for steps in permutation(sessions, 0, steps):
-            self._permutations.append(steps)
+        for steps in compute_permutations(groups_of_tags, 0, steps):
+            permutation = Permutation(steps)
+            self._permutations.append(permutation)
 
     def _build_step_mapping(self):
         pass
@@ -214,26 +226,25 @@ class TestCase(object):
         return len(self._sessions.keys())
 
     def session_tags(self):
-        return self._sessions.keys()
+        #return self._sessions.keys()
+        return [session.tag() for session in self._sessions]
 
     def session_setups(self):
         results = []
-        for tag, session in self._sessions.items():
-            if 'setup' in session:
-                results.append({
-                    'session_tag': tag,
-                    'sqls': session['setup'],
-                    })
+        for session in self._sessions:
+            setup = session.setup()
+            if setup is None:
+                continue
+            results.append(setup)
         return results
 
     def session_teardowns(self):
         results = []
-        for tag, session in self._sessions.items():
-            if 'teardown' in session:
-                results.append({
-                    'session_tag': tag,
-                    'sqls': session['teardown'],
-                    })
+        for session in self._sessions:
+            teardown = session.teardown()
+            if teardown is None:
+                continue
+            results.append(teardown)
         return results
 
     def next_permutation_steps(self):
@@ -241,20 +252,21 @@ class TestCase(object):
             yield self._permutation_tag_to_steps(permutation)
 
     def _permutation_tag_to_steps(self, permutation):
+        """
+
+        :rtypes: list of :class:`testcase.module.StepModule`
+        :returns: list of steps and its session tag
+        """
         results = []
-        for step in permutation:
+        for step in permutation.step_tags():
             found = False
-            for tag, session in self._sessions.items():
-                for s in session['steps']:
-                    if step != s['tag']:
+            for session in self._sessions:
+                for step_module in session.steps():
+                    if step != step_module.tag():
                         continue
-                    results.append({
-                        'session_tag': tag,
-                        'sqls': s['sqls'],
-                        'step_tag': s['tag']
-                        })
+                    results.append(step_module)
                     found = True
             if found == False:
                 raise Exception("cannot find the step %s in sessions", step)
-                    
+
         return results

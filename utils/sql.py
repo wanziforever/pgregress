@@ -18,7 +18,11 @@ def parse_sqls(sqlstr):
     newstr = ''
     inquora = False
     indollar = False
-    for i in range(len(sqlstr)):
+    length = len(sqlstr)
+    i = -1
+    trigger_name = ""
+    while i < length-1:
+        i += 1
         c = sqlstr[i]
         if c == '\'' and inquora is False:
             # handle wrap quora case
@@ -36,19 +40,34 @@ def parse_sqls(sqlstr):
             continue
 
         # for simple implemetation, ignore the wrap \$$ case handling
-        if c == '$' and sqlstr[i+1] == '$':
-            # in a double $$ sign
+        if c == '$':
+            tmp = []
+            while True:
+                i += 1
+                if sqlstr[i] == "$":
+                    break
+                if i > 10000:
+                    print("strange !! invalid trigger ")
+                    exit(1)
+                tmp.append(sqlstr[i])
+            trigger_name = "".join(tmp)
+            #if not indollar:
+            #    print("find a new trigger", trigger_name)
+            #else:
+            #    print("end trigger", trigger_name)
             indollar = not indollar
-            i += 1
             continue
 
         if c == ';' and inquora is False and indollar is False:
-            newstr = sqlstr[startpos:i].strip()
+            newstr = sqlstr[startpos:i+1].strip()
             # remove newlines
             sqls.append(newstr)
             startpos = i+1
 
     if i > startpos:
         sqls.append(sqlstr[startpos:].strip())
+
+    #for index, sql in enumerate(sqls):
+    #    print("%s -- %s" % (index, sql))
 
     return sqls

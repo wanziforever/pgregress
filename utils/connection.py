@@ -1,6 +1,14 @@
 import psycopg2
 import logging
 import select
+import datetime
+import time
+
+from exc import (
+    WaitDataTimeoutException,
+    WaitDataErrorException,
+    WaitDataLockedException
+    )
 
 logger = logging.getLogger('connection')
 
@@ -12,16 +20,266 @@ that the connection which is created without async=1 parameter will not
 support async function calls.
 """
 
-def simecolonCompletion(sql):
-    """add simecolon to a sql when it is not end with simecolon
+class ExecutionResult(object):
+    def __init__(self, descriptions=[], rows=[]):
+        self.descriptions = descriptions
+        self.rows = rows
 
-    :type sql: str
-    "param sql" the sql going to do completion
-    """
-    if sql.endswith(';'):
-        return sql
-    return sql + ';'
+    def is_empty(self):
+        return len(self.descriptions) == 0 and len(self.rows) == 0
+
+    def output(self):
+        """print the result to screen, the result is got from database
+
+        :type descriptions: list
+        :param descriptions: the column names in the result
+
+        :type rows: list of lists
+        :param rows: entry rows for the result of a db query
+          
+        """
+        def convert_result(value):
+            """currently python has different value print as c style, below
+            is the convertion to do:
+            * python style False/True to C style f/t
+            * python style None to C style `[nil]`(blank)
+            """
+            if value is False:
+                return 'f'
+            if value is True:
+                return 't'
+            if value is None:
+                return ''
+            if isinstance(value, float):
+                # ugly convertion, but no choice, c version code output a
+                # floag with no .0 suffix for integer like value
+                value = str(value)
+                if value.endswith('.0'):
+                    return value[:-2]
+            elif isinstance(value, datetime.date):
+                return value.strftime('%m-%d-%Y')
+
+            return value
+                
+        #if not descriptions or not rows:
+        #    return
+        if self.descriptions is None or self.rows is None:
+            return ""
+
+        if self.is_empty():
+            return ""
+
+        outputs = []
+        line = ""
+        
+        for desc in self.descriptions:
+            line += ("%-15s" % desc)
+
+        if line != "":
+            outputs.append(line)
+            
+        outputs.append("")
+
+        for row in self.rows:
+            line = ""
+            for t in row:
+                t = convert_result(t)
+                line += ("%-15s" % t)
+            outputs.append(line)
+
+        pstr = "\n".join(outputs)
+        return pstr
+        
+
+class SQLBlockExecutionStatus(object):
+    INITIALIZED = 0
+    INPROGRESS = 1
+    COMPLETED = 2
+    BLOCKED = 3
+    FAILED = 4
     
+
+INITIALIZE_SLOTS = 20
+class SQLBlockExecutorHelper(object):
+    """this is a exectutor helper for a sqlblock, ad sqlblock always have
+    many sub sqls, and the helper will track the exection status, hold the
+    temp result when doing middle of the sqls.
+    """
+    def __init__(self, sqlblock):
+        self._sqlblock = sqlblock
+        #self._status = SQLBlockExecutionStatus.INITIALIZED
+        self._num_of_sqls = self._sqlblock.num()
+        self._pos = -1
+        self._results = [ExecutionResult()] * INITIALIZE_SLOTS
+        self._errors = [''] * INITIALIZE_SLOTS
+        self._warns = [''] * INITIALIZE_SLOTS
+
+    #def start(self):
+    #    if self._status == SQLBlockExecutionStatus.INITIALIZED:
+    #        self._status = SQLBlockExecutionStatus.INPROGRESS
+
+    def next_sql(self, showonly=False):
+        if self.is_completed():
+            return None
+        if showonly:
+            self._pos += 1
+            sql = self._sqlblock[self._pos]
+            sql = self.simecolonCompletion(sql)
+            self._pos -= 1
+            return sql
+        
+        self._pos += 1
+        sql = self._sqlblock[self._pos]
+        sql = self.simecolonCompletion(sql)
+        return sql
+
+    def current_sql(self):
+        if self._pos == -1:
+            return None
+        sql = self._sqlblock[self._pos]
+        sql = self.simecolonCompletion(sql)
+        return sql
+
+    def status(self):
+        return self._status
+
+    def is_completed(self):
+        return self._pos >= self._num_of_sqls - 1
+
+    def pos(self):
+        return self._pos
+
+    def set_error(self, error):
+        self._errors[self._pos] = error
+
+    def set_result(self, result):
+        if not isinstance(result, ExecutionResult):
+            raise Exception("the result should be a ExecutionResult class")
+        self._results[self._pos] = result
+
+    def get_result(self):
+        return self._results[self._pos]
+
+    def output(self):
+        results = []
+        for i in range(self._pos+1):
+            executionresult = self._results[i]
+            if executionresult is None:
+                continue
+            if executionresult.is_empty():
+                continue
+            result = executionresult.output()
+            results.append(result)
+            
+        return "\n".join(results)
+
+    def get_error(self):
+        return self._errors[self._pos]
+
+    def set_warn(self, warn):
+        self._warns[self._pos] = warn
+
+    def get_warn(self):
+        return self._warns[self._pos]
+
+    def __repr__(self):
+        lines = []
+        counter = 0
+        for sql in self._sqlblock.get_sqls():
+            lines.append("%d-%s" %(counter, sql))
+            counter += 1
+
+        lines.append("current pos is %s" % self._pos)
+
+        return "\n".join(lines)
+
+    def show(self):
+        return self.__repr__()
+
+    def simecolonCompletion(self, sql):
+        """add simecolon to a sql when it is not end with simecolon
+        
+        :type sql: str
+        "param sql" the sql going to do completion
+        """
+        if sql.endswith(';'):
+            return sql
+        return sql + ';'
+
+    def reset(self):
+        self._pos = -1
+        self._results = [ExecutionResult()] * INITIALIZE_SLOTS
+        self._errors = [''] * INITIALIZE_SLOTS
+        self._warns = [''] * INITIALIZE_SLOTS
+
+    def execute(self, session):
+        while not self.is_completed():
+            sql = self.next_sql()
+            result = session.execute(sql)
+            self.set_result(result)
+
+    def sendSQL(self, session, check_lock):
+        """execute the sql in the sqlblock one by one, until the waiting lock
+        case 
+        :type check_lock: function
+        :param check_lock: the function used to check whether current session
+                           is locked
+        """
+        if self.is_completed():
+            self.reset()
+            
+        while not self.is_completed():
+            sql = self.next_sql()
+            session.sendSQL(sql)
+            try:
+                self.try_complete_current_execution(session, check_lock)
+            except Exception as e:
+                return
+            
+        self._status = SQLBlockExecutionStatus.COMPLETED
+
+    def try_complete_current_execution(self, session, check_lock):
+
+        if not callable(check_lock):
+            raise Exception(
+                "SQLHelper::sendSQLUtilWait() need a check_lock function"
+                )
+        # already called this function for current sql execution
+        if self.get_error():
+            raise WaitDataErrorException(self.get_error())
+
+        block_time = 0.02 # block 100ms
+        descriptions, rows = [], []
+        start_time = time.time()
+        while True:
+            try:
+                executionresult = session.getResult(block_time)
+                break
+            except WaitDataErrorException as e:
+                self.set_error(str(e))
+                raise
+            except WaitDataTimeoutException as e:
+                if check_lock(session.get_backend_pid()):
+                    self._status = SQLBlockExecutionStatus.BLOCKED
+                    raise WaitDataLockedException(str(e))
+                now = time.time()
+                if now - start_time > 60:
+                    session.cancel_backend()
+                    
+                if now - start_time > 75:
+                    raise WaitDataTimeoutException("sql %s timeout" % sql)
+
+                continue
+            except Exception as e:
+                # there is tricky workarround for handling try_complete
+                # function already get the result when doing sendSQL, and
+                # then getting again will raise a
+                # 'PGAsyncConnection::getResult() cursor is None or closed'
+                # exception, here just ignore the exception
+                return
+
+        self.set_result(executionresult)
+
 
 class PGConnection(object):
     """PostgresSQL sync mode connection class which provide some basic
@@ -58,19 +316,21 @@ class PGConnection(object):
         logger.debug(
             'PGConnection::execute() Conn(%s): %s' % (self.name, sql)
             )
-        sql = simecolonCompletion(sql)
         cursor = self._conn.cursor()
         cursor.execute(sql)
         try:
             dbrows = cursor.fetchall()
         except Exception as e:
-            logger.debug("there is no response for sql %s" % sql)
-            return None, None
+            logger.debug(
+                "there is no response for sql %s" % sql)
+            return ExecutionResult([], [])
 
         descriptions = [desc[0] for desc in cursor.description]
         rows = [list(row) for row in dbrows]
-        
-        return descriptions, rows
+        return ExecutionResult(descriptions, rows)
+
+    def sendSQL(self):
+        raise Exception("sync connection cannot support sendSQL async call")
 
     def autocommit(self, flag):
         """default sync connection don't use autocommit, psycopg2 has
@@ -104,7 +364,7 @@ class PGConnection(object):
         """
         sql = ("select pg_cancel_backend({0})").format(self._backend_pid)
         _, rows = self.execute(sql)
-        print("PGConnection::cancel_backend", rows)
+        #print("PGConnection::cancel_backend", rows)
 
 def wait_async(conn):
     """wait for the connection to be ready for next operation
@@ -155,7 +415,6 @@ class PGAsyncConnection(object):
         logger.debug(
             'PGConnection::execute() Conn(%s): %s' % (self.name, sql)
             )
-        sql = simecolonCompletion(sql)
         self._async_cursor = self._conn.cursor()
         self._async_cursor.execute(sql)
 
@@ -164,13 +423,13 @@ class PGAsyncConnection(object):
         try:
             dbrows = self._async_cursor.fetchall()
         except Exception as e:
-            return None, None
+            return ExecutionResult([], [])
 
         descriptions = [desc[0] for desc in self._async_cursor.description]
         rows = [list(row) for row in dbrows]
         self._async_cursor.close()
-        
-        return descriptions, rows
+
+        return ExecutionResult(descriptions, rows)
 
     def sendSQL(self, sql):
         """send sql in async to postgresql server, nothing will be returned
@@ -181,7 +440,9 @@ class PGAsyncConnection(object):
         :param sql: the sql clause to be executed
         """
         # print("sendSQL sql", sql)
-        sql = simecolonCompletion(sql)
+
+        logger.debug('PGConnection::sendSQL() Conn(%s): %s' % (self.name, sql))
+        
         self._async_cursor = self._conn.cursor()
         self._async_cursor.execute(sql)
         
@@ -229,13 +490,15 @@ class PGAsyncConnection(object):
         is_timeout = False
         while 1:
             if is_timeout:
-                return None, None
+                raise WaitDataTimeoutException()
             try:
                 state = self._conn.poll()
             except Exception as e:
                 diag = e.diag
                 # only raise the primary error message
-                raise Exception("%s:  %s" % (diag.severity, diag.message_primary))
+                errormsg = "%s:  %s" % (diag.severity, diag.message_primary)
+                raise WaitDataErrorException(errormsg)
+            
             if state == psycopg2.extensions.POLL_OK:
                 break
             else:
@@ -254,14 +517,13 @@ class PGAsyncConnection(object):
             dbrows = self._async_cursor.fetchall()
         except Exception as e:
             #print("we got some exception for fetchall", str(e))
-            return descriptions, []
-
+            return ExecutionResult(descriptions, [])
+        
         rows = [list(row) for row in dbrows]
 
         self._async_cursor.close()
+        return ExecutionResult(descriptions, rows)
         
-        return descriptions, rows
-    
     # def get_backend_id(self):
     #     """get the connection related server backend process id
     # 

@@ -6,9 +6,9 @@ _tabversion = '3.10'
 
 _lr_method = 'LALR'
 
-_lr_signature = 'COMMENTS ID PERMUTATION SESSION SETUP SQLCLAUSE STEP TEARDOWNstatement : setup_multiple teardown_statement session_statement\n                 | statement session_statement\n                 | statement permutation_statementempty : setup_multiple : setup_multiple setup_statement\n                      | setup_statement\n                      | emptysetup_statement : SETUP SQLCLAUSEteardown_statement : TEARDOWN SQLCLAUSE\n                          | emptysession_statement : SESSION ID continue_steps_expressionsession_statement : SESSION ID setup_statement continue_steps_expressionsession_statement : SESSION ID setup_statement continue_steps_expression teardown_statementsession_statement : SESSION ID continue_steps_expression teardown_statementcontinue_steps_expression : continue_steps_expression step\n                                 | stepstep : STEP ID SQLCLAUSEpermutation_statement : permutation_expressionpermutation_expression : PERMUTATION ID\n                              | permutation_expression ID'
+_lr_signature = 'COMMENTS ID PERMUTATION SESSION SETUP SQLCLAUSE STEP TEARDOWNstatement : setup_multiple teardown_multiple session_statement\n                 | statement session_statement\n                 | statement permutation_statementempty : setup_multiple : setup_multiple setup_statement\n                      | setup_statement\n                      | emptysetup_statement : SETUP SQLCLAUSEteardown_multiple : teardown_multiple teardown_statement\n                         | teardown_statement\n                         | emptyteardown_statement : TEARDOWN SQLCLAUSEsession_statement : SESSION ID continue_steps_expressionsession_statement : SESSION ID setup_statement continue_steps_expressionsession_statement : SESSION ID setup_statement continue_steps_expression teardown_statementsession_statement : SESSION ID continue_steps_expression teardown_statementcontinue_steps_expression : continue_steps_expression step\n                                 | stepstep : STEP ID SQLCLAUSEpermutation_statement : permutation_expressionpermutation_expression : PERMUTATION ID\n                              | permutation_expression ID'
     
-_lr_action_items = {'SESSION':([0,1,2,4,5,7,8,9,11,12,13,15,17,18,19,20,21,22,25,26,27,29,30,],[-4,6,-6,-7,-4,-3,-18,-2,-8,-10,-5,6,-20,-19,-9,-1,-16,-4,-15,-14,-4,-13,-17,]),'$end':([1,7,8,9,12,17,18,19,20,21,22,25,26,27,29,30,],[0,-3,-18,-2,-10,-20,-19,-9,-1,-16,-4,-15,-14,-4,-13,-17,]),'SQLCLAUSE':([3,14,28,],[11,19,30,]),'SETUP':([0,2,4,5,11,13,16,],[3,-6,-7,3,-8,-5,3,]),'TEARDOWN':([0,2,4,5,11,13,21,22,25,27,30,],[-4,-6,-7,14,-8,-5,-16,14,-15,14,-17,]),'ID':([6,8,10,17,18,24,],[16,17,18,-20,-19,28,]),'STEP':([11,16,21,22,23,25,27,30,],[-8,24,-16,24,24,-15,24,-17,]),'PERMUTATION':([1,7,8,9,12,17,18,19,20,21,22,25,26,27,29,30,],[10,-3,-18,-2,-10,-20,-19,-9,-1,-16,-4,-15,-14,-4,-13,-17,]),}
+_lr_action_items = {'SETUP':([0,2,3,4,12,16,17,],[5,5,-6,-7,-5,-8,5,]),'TEARDOWN':([0,2,3,4,11,12,13,14,16,21,22,23,25,28,29,32,],[-4,15,-6,-7,15,-5,-10,-11,-8,-9,-12,15,-18,-17,15,-19,]),'SESSION':([0,1,2,3,4,6,7,9,11,12,13,14,16,18,19,20,21,22,23,25,27,28,29,31,32,],[-4,8,-4,-6,-7,-2,-3,-20,8,-5,-10,-11,-8,-22,-21,-1,-9,-12,-13,-18,-16,-17,-14,-15,-19,]),'$end':([1,6,7,9,18,19,20,22,23,25,27,28,29,31,32,],[0,-2,-3,-20,-22,-21,-1,-12,-13,-18,-16,-17,-14,-15,-19,]),'PERMUTATION':([1,6,7,9,18,19,20,22,23,25,27,28,29,31,32,],[10,-2,-3,-20,-22,-21,-1,-12,-13,-18,-16,-17,-14,-15,-19,]),'SQLCLAUSE':([5,15,30,],[16,22,32,]),'ID':([8,9,10,18,19,26,],[17,18,19,-22,-21,30,]),'STEP':([16,17,23,24,25,28,29,32,],[-8,26,26,26,-18,-17,26,-19,]),}
 
 _lr_action = {}
 for _k, _v in _lr_action_items.items():
@@ -17,7 +17,7 @@ for _k, _v in _lr_action_items.items():
       _lr_action[_x][_k] = _y
 del _lr_action_items
 
-_lr_goto_items = {'permutation_statement':([1,],[7,]),'empty':([0,5,22,27,],[4,12,12,12,]),'permutation_expression':([1,],[8,]),'step':([16,22,23,27,],[21,25,21,25,]),'continue_steps_expression':([16,23,],[22,27,]),'statement':([0,],[1,]),'setup_statement':([0,5,16,],[2,13,23,]),'session_statement':([1,15,],[9,20,]),'teardown_statement':([5,22,27,],[15,26,29,]),'setup_multiple':([0,],[5,]),}
+_lr_goto_items = {'statement':([0,],[1,]),'setup_multiple':([0,],[2,]),'setup_statement':([0,2,17,],[3,12,24,]),'empty':([0,2,],[4,14,]),'session_statement':([1,11,],[6,20,]),'permutation_statement':([1,],[7,]),'permutation_expression':([1,],[9,]),'teardown_multiple':([2,],[11,]),'teardown_statement':([2,11,23,29,],[13,21,27,31,]),'continue_steps_expression':([17,24,],[23,29,]),'step':([17,23,24,29,],[25,28,25,28,]),}
 
 _lr_goto = {}
 for _k, _v in _lr_goto_items.items():
@@ -27,24 +27,26 @@ for _k, _v in _lr_goto_items.items():
 del _lr_goto_items
 _lr_productions = [
   ("S' -> statement","S'",1,None,None,None),
-  ('statement -> setup_multiple teardown_statement session_statement','statement',3,'p_statement_expression','case_parser.py',18),
-  ('statement -> statement session_statement','statement',2,'p_statement_expression','case_parser.py',19),
-  ('statement -> statement permutation_statement','statement',2,'p_statement_expression','case_parser.py',20),
-  ('empty -> <empty>','empty',0,'p_empty','case_parser.py',33),
-  ('setup_multiple -> setup_multiple setup_statement','setup_multiple',2,'p_setup_multiple','case_parser.py',37),
-  ('setup_multiple -> setup_statement','setup_multiple',1,'p_setup_multiple','case_parser.py',38),
-  ('setup_multiple -> empty','setup_multiple',1,'p_setup_multiple','case_parser.py',39),
-  ('setup_statement -> SETUP SQLCLAUSE','setup_statement',2,'p_setup_statement_expression','case_parser.py',54),
-  ('teardown_statement -> TEARDOWN SQLCLAUSE','teardown_statement',2,'p_teardown_statement_expression','case_parser.py',69),
-  ('teardown_statement -> empty','teardown_statement',1,'p_teardown_statement_expression','case_parser.py',70),
-  ('session_statement -> SESSION ID continue_steps_expression','session_statement',3,'p_session_statement_expression','case_parser.py',78),
-  ('session_statement -> SESSION ID setup_statement continue_steps_expression','session_statement',4,'p_session_statement_setup_expression','case_parser.py',85),
-  ('session_statement -> SESSION ID setup_statement continue_steps_expression teardown_statement','session_statement',5,'p_session_statement_setup_teardown_expression','case_parser.py',94),
-  ('session_statement -> SESSION ID continue_steps_expression teardown_statement','session_statement',4,'p_session_statement_teardown_expression','case_parser.py',105),
-  ('continue_steps_expression -> continue_steps_expression step','continue_steps_expression',2,'p_continue_steps_expression_sqlblock','case_parser.py',114),
-  ('continue_steps_expression -> step','continue_steps_expression',1,'p_continue_steps_expression_sqlblock','case_parser.py',115),
-  ('step -> STEP ID SQLCLAUSE','step',3,'p_step_sqlblock','case_parser.py',126),
-  ('permutation_statement -> permutation_expression','permutation_statement',1,'p_permutation_statement','case_parser.py',133),
-  ('permutation_expression -> PERMUTATION ID','permutation_expression',2,'p_permutation_expression_id','case_parser.py',138),
-  ('permutation_expression -> permutation_expression ID','permutation_expression',2,'p_permutation_expression_id','case_parser.py',139),
+  ('statement -> setup_multiple teardown_multiple session_statement','statement',3,'p_statement_expression','case_parser.py',40),
+  ('statement -> statement session_statement','statement',2,'p_statement_expression','case_parser.py',41),
+  ('statement -> statement permutation_statement','statement',2,'p_statement_expression','case_parser.py',42),
+  ('empty -> <empty>','empty',0,'p_empty','case_parser.py',57),
+  ('setup_multiple -> setup_multiple setup_statement','setup_multiple',2,'p_setup_multiple','case_parser.py',61),
+  ('setup_multiple -> setup_statement','setup_multiple',1,'p_setup_multiple','case_parser.py',62),
+  ('setup_multiple -> empty','setup_multiple',1,'p_setup_multiple','case_parser.py',63),
+  ('setup_statement -> SETUP SQLCLAUSE','setup_statement',2,'p_setup_statement_expression','case_parser.py',77),
+  ('teardown_multiple -> teardown_multiple teardown_statement','teardown_multiple',2,'p_teardown_multiple','case_parser.py',83),
+  ('teardown_multiple -> teardown_statement','teardown_multiple',1,'p_teardown_multiple','case_parser.py',84),
+  ('teardown_multiple -> empty','teardown_multiple',1,'p_teardown_multiple','case_parser.py',85),
+  ('teardown_statement -> TEARDOWN SQLCLAUSE','teardown_statement',2,'p_teardown_statement_expression','case_parser.py',98),
+  ('session_statement -> SESSION ID continue_steps_expression','session_statement',3,'p_session_statement_expression','case_parser.py',105),
+  ('session_statement -> SESSION ID setup_statement continue_steps_expression','session_statement',4,'p_session_statement_setup_expression','case_parser.py',120),
+  ('session_statement -> SESSION ID setup_statement continue_steps_expression teardown_statement','session_statement',5,'p_session_statement_setup_teardown_expression','case_parser.py',138),
+  ('session_statement -> SESSION ID continue_steps_expression teardown_statement','session_statement',4,'p_session_statement_teardown_expression','case_parser.py',154),
+  ('continue_steps_expression -> continue_steps_expression step','continue_steps_expression',2,'p_continue_steps_expression_sqlblock','case_parser.py',167),
+  ('continue_steps_expression -> step','continue_steps_expression',1,'p_continue_steps_expression_sqlblock','case_parser.py',168),
+  ('step -> STEP ID SQLCLAUSE','step',3,'p_step_sqlblock','case_parser.py',179),
+  ('permutation_statement -> permutation_expression','permutation_statement',1,'p_permutation_statement','case_parser.py',186),
+  ('permutation_expression -> PERMUTATION ID','permutation_expression',2,'p_permutation_expression_id','case_parser.py',191),
+  ('permutation_expression -> permutation_expression ID','permutation_expression',2,'p_permutation_expression_id','case_parser.py',192),
 ]
