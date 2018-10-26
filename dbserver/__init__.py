@@ -7,9 +7,11 @@ import logging
 import time
 import subprocess
 import threading
+import config
 
 logger = logging.getLogger('DBServer')
-_PORT = 5433
+_PORT = config.port
+_DBNAME = config.dbname
 
 def get_installation_bin_path():
     import config
@@ -278,7 +280,7 @@ class DBServer(object):
                      % (psql, lib_path))
         env = {'LD_LIBRARY_PATH': lib_path}
         cmd = " ".join([
-            psql, '-p', str(self._port), 'postgres', '<', '/dev/null'
+            psql, '-p', str(self._port), str(_DBNAME), '<', '/dev/null'
             ])
         child = subprocess.run(
             cmd, shell=True, env=env, stdout=subprocess.PIPE,
