@@ -37,6 +37,7 @@ def all_profiles():
 
 # main
 if __name__ == "__main__":
+    os.system('export PYTHONPATH=.')
     for profile in all_profiles():
         profile = Profile(profile, use_schedule=True)
 
