@@ -24,7 +24,9 @@ __author__      = "denny wang (denny.wangliang@gmail.com)"
 __copyright__   = "Copyright 2018, Highgo LLC"
 
 import os
+import sys
 
+sys.path.append('.')
 from utils.connection import PGConnectionManager, SQLBlockExecutorHelper
 from testcase import TestCase
 from utils.sql import parse_sqls
@@ -42,6 +44,7 @@ from exc import (
 logging.basicConfig(level=logging.INFO)
 #logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("TestRunner")
+#sys.path.append('../')
 
 STEP_NOBLOCK = 0x1
 STEP_RETRY = 0x2
