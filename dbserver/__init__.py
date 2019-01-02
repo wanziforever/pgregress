@@ -12,6 +12,7 @@ import config
 logger = logging.getLogger('DBServer')
 _PORT = config.port
 _DBNAME = config.dbname
+_INSTALLDIR = config.installation
 
 def get_installation_bin_path():
     import config
@@ -139,7 +140,7 @@ class DBServer(object):
         lib_path = get_installation_lib_path()
         logger.debug("DBServer::initDB() bin: %s, lib: %s"
                      % (initdb, lib_path))
-        env = {'LD_LIBRARY_PATH': lib_path}
+        env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
         child = subprocess.run(
             [initdb, '-D', data_path, '--no-clean', '--no-sync', '--no-locale'],
             env=env, stdout=subprocess.PIPE,
@@ -211,7 +212,7 @@ class DBServer(object):
         if log_path:
             logger.debug("log directory: %s" % log_path)
             
-        env = {'LD_LIBRARY_PATH': lib_path}
+        env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
 
         child = None
         postgres_cmd = [postgres, '-D', data_path, '-F', '-d', '5']
@@ -278,7 +279,7 @@ class DBServer(object):
         lib_path = get_installation_lib_path()
         logger.debug('DBServer::is_ready() bin: %s, lib: %s'
                      % (psql, lib_path))
-        env = {'LD_LIBRARY_PATH': lib_path}
+        env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
         cmd = " ".join([
             psql, '-p', str(self._port), str(_DBNAME), '<', '/dev/null'
             ])
