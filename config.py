@@ -5,5 +5,5 @@ user='gitlab-runner'
 password=''
 #installation='/mnt/study/pg/installation'
 installation='/home/gitlab-runner/HighGo/'
-testcases='home/gitlab-runner/regression/'
+testcases='/home/gitlab-runner/regression/'
 runner_output_to_streen=True

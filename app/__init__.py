@@ -122,7 +122,7 @@ class Application(object):
         logger.debug('PG server is ready to accept message')
 
     def _clear_PGServer(self):
-        self.server.stop()
+        self.server.stop(_DATA_PATH)
         DBServer.removeDB(_DATA_PATH)
         if DBServer.check_database_data_exist(_DATA_PATH):
             raise Exception("fail to remove the DB data")
