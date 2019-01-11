@@ -73,7 +73,7 @@ class ProfileReport(object):
                 self._fail += 1
 
     def generate_report_html(self, report_position):
-        templateLoader = jinja2.FileSystemLoader(searchpath="./app")
+        templateLoader = jinja2.FileSystemLoader(searchpath="./report")
         templateEnv = jinja2.Environment(loader=templateLoader)
         TEMPLATE_FILE = "report_template.html"
         template = templateEnv.get_template(TEMPLATE_FILE)

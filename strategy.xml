@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<strategies>
+    <strategy name="multisession" applicationClass="multiapp" profileClass="multiprofile" checkerClass="multichecker"/>
+    <strategy name="singlesession" applicationClass="singleapp" profileClass="singleprofile" checkerClass="singlechecker"/>
+    <strategy name="pythonscript" applicationClass="pythonapp" profileClass="pythonprofile" checkerClass="pythonchecker"/>
+</strategies>

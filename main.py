@@ -64,12 +64,10 @@ if __name__ == "__main__":
 
     for profile in all_profiles():
         profile = Profile(profile, use_schedule=True)
-
-        if profile._ptype not in strategy_map:
-            logger.error("unknown strategy name")
-            return
-        #app = Application(profile)
-        app_mod = importlib.import_module(strategy_map[profile_ptype][0])
+        if profile._ptype not in list(strategy_map.keys()):
+            logger.error("unknown strategy name: %s" % profile._ptype)
+            exit()
+        app_mod = importlib.import_module(strategy_map[profile._ptype][0])
         app = app_mod.Application(profile)
 
         try:

@@ -266,8 +266,8 @@ class DBServer(object):
             try:
                 bin_path = get_installation_bin_path()
                 pg_ctl = os.path.join(bin_path, 'pg_ctl')
-                #res=subprocess.check_call([pg_ctl,'-D',data_path,'stop','-w','-m','immediate'])
-                res=subprocess.check_call([pg_ctl,'-D',data_path,'stop','-w'])
+                res=subprocess.check_call([pg_ctl,'-D',data_path,'stop','-m','immediate'])
+                #res=subprocess.check_call([pg_ctl,'-D',data_path,'stop','-w'])
                 logger.debug("stop the HGDB server done,the result is: %d" %res)
             except subprocess.CalledProcessError as e:
                 logger.debug("the command is:%s" % e.cmd)

@@ -30,6 +30,7 @@ class Profile(object):
         self._current_case_pos = -1
         self._schedule = None
         self._ptype = ""
+        self._get_ptype()
         self._use_schedule = use_schedule
         self._build()
 
@@ -49,7 +50,8 @@ class Profile(object):
             exit()
         else:
             with open(ptype_path,'r') as fd:
-            self._ptype = fd.read()    
+                self._ptype = fd.read().strip()    
+                print(self._ptype,type(self._ptype))
 
     def _fill_instruction(self):
         """find a instruction file under the profile directory, if no file
