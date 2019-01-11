@@ -232,7 +232,7 @@ class DBServer(object):
         
         return DBServer(child, _PORT)
 
-    def stop(self, wait=True):
+    def stop(self, data_path):
         """simply use kill signal to kill the postgresql server, without
         taking care the data loss, we will finish the test case, and will
         not use the data for ever.
@@ -246,8 +246,14 @@ class DBServer(object):
                      stop, if yes, the function will wait until the process
                      exist
         """
-        self._popen.kill()
+        """
+        update this function by Maggie, we will use the PG offical way to stop the PG server instead of simply kill the process
+        the wait param will be removed in this new way, we will use -W for wait
+        add the new parameter, data_path.
+        :type data_path: string
+        :param data_path: indicate the data path of the postgresql server
         
+        self._popen.kill()
         if wait is False:
             return
 
@@ -255,6 +261,18 @@ class DBServer(object):
             time.sleep(1)
             
         logger.debug('server is stopped')
+        """
+        while self.is_running():
+            try:
+                bin_path = get_installation_bin_path()
+                pg_ctl = os.path.join(bin_path, 'pg_ctl')
+                #res=subprocess.check_call([pg_ctl,'-D',data_path,'stop','-w','-m','immediate'])
+                res=subprocess.check_call([pg_ctl,'-D',data_path,'stop','-w'])
+                logger.debug("stop the HGDB server done,the result is: %d" %res)
+            except subprocess.CalledProcessError as e:
+                logger.debug("the command is:%s" % e.cmd)
+                logger.debug("the returncode is:%d" % e.returncode)
+                logger.debug("the output is:%s" % e.output)
 
     def is_ready(self):
         """whether PostgreSQL is accepting message

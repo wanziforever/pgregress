@@ -29,6 +29,7 @@ class Profile(object):
         self._cases = []
         self._current_case_pos = -1
         self._schedule = None
+        self._ptype = ""
         self._use_schedule = use_schedule
         self._build()
 
@@ -37,6 +38,18 @@ class Profile(object):
 
     def schedule(self):
         return self._schedule
+
+    def _get_ptype(self):
+        """find the ptype file under the profile directory, if no file
+        exit,set value to self._ptype, return empty
+        """
+        ptype_path = os.path.join(self.path, "ptype")
+        if not os.path.exists(ptype_path):
+            logger.error("there is no ptype file for this profile")
+            exit()
+        else:
+            with open(ptype_path,'r') as fd:
+            self._ptype = fd.read()    
 
     def _fill_instruction(self):
         """find a instruction file under the profile directory, if no file

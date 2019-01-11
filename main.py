@@ -7,6 +7,7 @@ from profile import Profile
 #from multiapp import MultiApplication
 import logging
 import xml.dom.minidom as xmldom
+import config
 logger = logging.getLogger('main')
 
 def help():
@@ -16,8 +17,7 @@ def help():
 logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger('main')
-test_data_dir = './data'
-#strategy_file = './strategy.xml'
+test_data_dir = config.testcases
 
 def all_profiles():
     """list all the valid test profiles
@@ -82,4 +82,3 @@ if __name__ == "__main__":
             logger.debug(traceback.format_exc())
         else:    
             logger.debug('Done')
-
