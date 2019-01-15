@@ -69,6 +69,7 @@ class ScheduleCase(object):
         if not self._raw_data:
             raise Exception("schedule not read file")
         
+        print("PARSE  the schedulecase...... START!")
         for line in self._raw_data.splitlines():
             line = line.strip()
             # currently didnot need to support `ignore`
@@ -83,6 +84,7 @@ class ScheduleCase(object):
                 tb.add(TestCaseDesc(name, d))
 
             self._batches.append(tb)
+        print(" PARSE  the schedulecase......DONE!")
 
     def next_batch(self):
         self._current_batches_idx += 1

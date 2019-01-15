@@ -24,7 +24,11 @@ class TestCaseDesc(object):
         return self._name
 
     def path(self):
-        path = os.path.join(self._directory, self._name+".spec")
+
+        #Maggie comment this line, will change the schedule file, 
+        #in the schedule file all the testcase will have the full name
+        #path = os.path.join(self._directory, self._name+".spec")
+        path = os.path.join(self._directory, self._name)
         return path
 
     def __str__(self):

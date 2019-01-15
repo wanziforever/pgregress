@@ -229,7 +229,7 @@ class DBServer(object):
         # sleep for a very short time to wait the process start at
         # os level
         time.sleep(0.2)
-        
+
         return DBServer(child, _PORT)
 
     def stop(self, data_path):

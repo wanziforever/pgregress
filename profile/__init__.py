@@ -51,7 +51,7 @@ class Profile(object):
         else:
             with open(ptype_path,'r') as fd:
                 self._ptype = fd.read().strip()    
-                print(self._ptype,type(self._ptype))
+                logger.info("The session type for this profile is: %s" % self._ptype)
 
     def _fill_instruction(self):
         """find a instruction file under the profile directory, if no file
