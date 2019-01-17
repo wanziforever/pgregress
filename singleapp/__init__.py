@@ -159,14 +159,19 @@ class Application(object):
                 if batch.len() > 1:
                     self._start_batch(batch)
                 else:
+                    self._make_PGServer()
                     self._start_test(batch.tests()[0])
+                    self._clear_PGServer()
                 batch = schedule.next_batch()
         else:
 
+            #for serial scheduled testcases, use on instance to run
+            self._make_PGServer()
             case = self.profile.next_case()
             while case:
                 self._start_test(case)
                 case = self.profile.next_case()
+            self._clear_PGServer()
 
         logger.debug("cases run out!")
         self._end_profile_prompt()
@@ -261,7 +266,7 @@ class Application(object):
             print("----------------------------------------+")
             
 
-        self._make_PGServer()
+        #self._make_PGServer()
         
         start_prompt()
         
@@ -294,6 +299,7 @@ class Application(object):
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             universal_newlines=True
             )
+        
         """
         child = subprocess.Popen(
             ['python3', '-u', 'runner/testrunner.py', testcase.path()],
@@ -316,7 +322,7 @@ class Application(object):
 
         diff_result = self._make_diff(testcase)
 
-        self._clear_PGServer()
+        #self._clear_PGServer()
         
         end_prompt(diff_result)
 
