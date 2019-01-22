@@ -7,7 +7,7 @@ that one profile should contain one kind of testcase.
 """
 
 from dbserver import DBServer
-from utils.file import create_directory
+#from utils.file import create_directory
 import time
 import logging
 import threading
@@ -39,7 +39,7 @@ def capture_runner_output(proc, logfile, to_screen=True):
       currently not taking care of the thread end running staffing
     """
     logger.debug("capture log to %s" % logfile)
-    runner_logger = logging.getLogger("Runner")
+    runner_logger = logging.getLogger("MultiRunner")
     with open(logfile, 'w') as fd:
         for line in iter(proc.stdout.readline, ''):
             if to_screen:
@@ -55,23 +55,27 @@ class Application(object):
     :type profile: :class:`Profile`
     :param profile: profile which bind to this application
     """
-    def __init__(self, profile):
+    def __init__(self, profile, checker):
         self.profile = profile
+        self.checker = checker
+        '''
         self._outputs_dir = os.path.join(profile.path, 'outputs')
         self._results_dir = os.path.join(self._outputs_dir, 'results')
         self._expected_dir = os.path.join(profile.path, 'expected')
         self._logs_dir = os.path.join(self._outputs_dir, 'logs')
         self._report_file_html = os.path.join(self._outputs_dir, "report.html")
         self._report_file_text = os.path.join(self._outputs_dir, "report.txt")
+        self._report = ProfileReport(self.profile.name)
+        '''
         self._maint_session = None
         self._sessions = {}
         self.server = None
         self._clear_logs()
-        self._report = ProfileReport(self.profile.name)
         self._start_time = None
         self._end_time = None
         self._fail_reason = {}
-
+ 
+    '''
     def _check_directories(self):
         """prepare the required directories
         """
@@ -87,10 +91,11 @@ class Application(object):
         if self._expected_dir:
             if not os.path.exists(self._expected_dir):
                 raise Exception("cannot find the expected directory")
+    '''       
 
     def _clear_logs(self):
         """clear the postmaster log"""
-        logfile = "%s/postmaster.log" % self._logs_dir
+        logfile = "%s/postmaster.log" % self.checker._logs_dir
         if not os.path.exists(logfile):
             # here i didn't check it is a file or a dir
             return
@@ -114,7 +119,7 @@ class Application(object):
                             log_temp_files = '128kB',
                             max_prepared_transactions = '2')
 
-        self.server = DBServer.start(_DATA_PATH, self._logs_dir)
+        self.server = DBServer.start(_DATA_PATH, self.checker._logs_dir)
         
         while not self.server.is_ready():
             logger.debug("trying to start the PostgreSQL service")
@@ -150,7 +155,7 @@ class Application(object):
         """base the profile configration, start the test
         """
         self._start_profile_prompt()
-        self._check_directories()
+        self.checker._check_directories()
 
         if self.profile.use_schedule():
             schedule = self.profile.schedule()
@@ -212,7 +217,7 @@ class Application(object):
                 universal_newlines=True, env=env
                 )
         
-            result_file = os.path.join(self._results_dir,
+            result_file = os.path.join(self.checker._results_dir,
                                        case.name()+".out")
 
             t = threading.Thread(target=capture_runner_output,
@@ -224,12 +229,13 @@ class Application(object):
         for child in processes:
             child.wait()
 
-        diff_results = self._make_many_diff(batch.tests())
+        diff_results = self.checker._make_many_diff(batch.tests())
         
         self._clear_PGServer()
 
         end_prompt(diff_results)
 
+        '''
         for i in range(batch.len()):
             if diff_results[i] is False:
                 self._report.add_case_info(batch[i].name(),
@@ -238,6 +244,7 @@ class Application(object):
             else:
                 self._report.add_case_info(batch[i].name(),
                                            diff_results[i], '')
+        ''' 
 
     def _start_test(self, testcase):
         """run the test case singly, one by one
@@ -295,7 +302,7 @@ class Application(object):
             universal_newlines=True
             )
         
-        result_file = os.path.join(self._results_dir,
+        result_file = os.path.join(self.checker._results_dir,
                                    testcase.name()+".out")
         # Popen communicate is not good, since it will block until the
         # the runner finish and then we can get the output, here we use
@@ -307,12 +314,13 @@ class Application(object):
         t.start()
         child.wait()
 
-        diff_result = self._make_diff(testcase)
+        diff_result = self.checker._make_diff(testcase)
 
         self._clear_PGServer()
         
         end_prompt(diff_result)
-
+       
+        '''
         if diff_result is False:
             self._report.add_case_info(testcase.name(),
                                        diff_result,
@@ -320,11 +328,11 @@ class Application(object):
         else:
             self._report.add_case_info(testcase.name(),
                                        diff_result, '')
-        
+        '''
 
     def _capture_outputs(self, testcase, out, err):
         case_name = os.path.basename(os.path.splitext(testcase)[0])
-        result_file = os.path.join(self._results_dir, case_name+".out")
+        result_file = os.path.join(self.checker._results_dir, case_name+".out")
         
         logger.debug("save the case result to file %s" % result_file)
         with open(result_file, 'w') as fd:
@@ -335,8 +343,12 @@ class Application(object):
 
         with open(result_file, 'a') as fd:
             fd.write(err)
-        
-    def _make_many_diff(self, manycases):
+
+
+
+'''
+
+   def _make_many_diff(self, manycases):
         """have a verify of specified test cases
 
         :type manycases: list of :class:`testcase.TestCaseDesc`
@@ -363,8 +375,8 @@ class Application(object):
         :rtype: Boolean
         :returns: the diff result of specified test case
         """
-        expected = os.path.join(self._expected_dir, case.name()+".out")
-        result = os.path.join(self._results_dir, case.name()+".out")
+        expected = os.path.join(self.checker._expected_dir, case.name()+".out")
+        result = os.path.join(self.checker._results_dir, case.name()+".out")
         print("** case %s, make diff" % case.name())
         print("result:", result)
         print("expect:", expected)
@@ -383,7 +395,6 @@ class Application(object):
             return True
             
         return False
-
     def report_gen(self):
         self._report.set_start_time(
             self._start_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -393,4 +404,4 @@ class Application(object):
             )
         self._report.generate_report_html(self._report_file_html)
         self._report.generate_report_text(self._report_file_text)
-        
+'''

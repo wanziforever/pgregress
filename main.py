@@ -4,10 +4,11 @@ import sys
 import os
 import importlib
 from profile import Profile
-#from multiapp import MultiApplication
+#from checker import Checker
 import logging
 import xml.dom.minidom as xmldom
 import config
+import traceback
 logger = logging.getLogger('main')
 
 def help():
@@ -61,22 +62,22 @@ def parse_strategy():
 # main
 if __name__ == "__main__":
     parse_strategy()
-
     for profile in all_profiles():
         profile = Profile(profile, use_schedule=True)
         if profile._ptype not in list(strategy_map.keys()):
             logger.error("unknown strategy name: %s" % profile._ptype)
             exit()
         app_mod = importlib.import_module(strategy_map[profile._ptype][0])
-        app = app_mod.Application(profile)
+        chk_mod = importlib.import_module(strategy_map[profile._ptype][2])
+        chk = chk_mod.Checker(profile)
+        app = app_mod.Application(profile,chk)
 
         try:
             app.run()
-            app.report_gen()
+            chk._report_gen(app._start_time,app._end_time)
         except Exception as e:
             print()
             logger.error(str(e))
-            import traceback
             logger.debug(traceback.format_exc())
         else:    
             logger.debug('Done')
