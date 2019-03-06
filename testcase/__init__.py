@@ -53,6 +53,7 @@ class TestCase(object):
         self._command_pos = -1
         self._structure = None
         self._commands_sequence = []
+        self._keywords = []
         self._setups = []
         self._teardowns = []
         self._sessions = []
@@ -70,15 +71,13 @@ class TestCase(object):
 
         for session in self._sessions:
             session.reset()
-        
+
 
     def build(self):
         if self._structure is not None:
             return
         self._read_file_content()
         self._structure = parse_testcase_structure(self._file_content)
-        #print("---------------------------")
-        #print(self._structure)
         self._build_internals()
         self._build_implicit_permutations()
 
@@ -88,6 +87,7 @@ class TestCase(object):
         if self._structure is None:
             return
 
+        self._keywords = list(self._structure['keywords'])
         self._setups = list(self._structure['setup'])
         self._teardowns = list(self._structure['teardown'])
         self._sessions = list(self._structure['sessions'])
@@ -205,6 +205,11 @@ class TestCase(object):
 
     def _get_command_by_step(self, step):
         pass
+
+    def keywords(self):
+        """get the test case level keyword commands
+        """
+        return self._keywords
 
     def setups(self):
         """get the test case level setup sql commands

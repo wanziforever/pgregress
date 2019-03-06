@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<operations>
+  <operation keyword="DB_RESTART"  script="keywords/db_restart.py" desc="restart the database instance">
+    <arg desc="max waiting time(seconds)">wait_time</arg>
+  </operation>
+  <operation keyword="DB_SET_CONFIG" script="keywords/db_set_config.py" desc="set the property in configuration file">
+    <arg desc="file name going to configured">name</arg>
+    <arg desc="variable name going to set">name</arg>
+    <arg desc="value going to set">value</arg>
+  </operation>
+  <operation keyword="HOLD_ON" script="keywords/wait_for_seconds.py" desc="wait some time">
+    <arg desc="time to wait(seconds)">seconds</arg>
+  </operation>
+  <operation keyword="OTHERS" script="keywords/others.py" desc="other scripts to support">
+  </operation>
+</operations>
+

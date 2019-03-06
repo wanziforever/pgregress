@@ -24,6 +24,7 @@ from .modules import (SQLBlock, StepModule, SessionModule, SetupModule,
 #logger = logging.getLogger()
 
 statements = {
+    'keywords': [],
     'setup': [],
     'teardown': [],
     'sessions': [],
@@ -37,16 +38,31 @@ statements = {
     }
 
 def p_statement_expression(p):
-    '''statement : setup_multiple teardown_multiple session_statement
+    '''statement : keywords_statement setup_multiple teardown_multiple session_statement
+                 | setup_multiple teardown_multiple session_statement
                  | statement session_statement
-                 | statement permutation_statement'''
+                 | statement permutation_statement
+                 | keywords_statement'''
 
     # here we handle statement setup is to different the setup in session
+    if len(p) == 5:
+        statements['keywords'] = p[1]
+        statements['setup'] = p[2]
+        statements['teardown'] = p[3]
     if len(p) == 4:
         statements['setup'] = p[1]
         statements['teardown'] = p[2]
+    if len(p) == 2:
+        statements['keywords'] = p[1]
         
     p[0] = statements
+
+def p_keywords_statement(p):
+    '''keywords_statement : KEYWORD KEYWORDCLAUSE'''
+    keywords_clause = p[2]
+    keywords_list = keywords_clause.split(';')
+    #statements['keywords'] = keywords_list
+    p[0] = keywords_list
 
 # def p_comments_block(p):
 #     '''comment_block : comment_block COMMENTS

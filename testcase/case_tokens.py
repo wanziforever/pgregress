@@ -13,6 +13,19 @@ def simple_parse_sqls(sqlstr):
     
     return sqlstr
 
+def simple_parse_keywords(keywordstr):
+    keywordstr = keywordstr.strip()
+    if keywordstr[0] == '[':
+        # remove the left and right [] 
+        keywordstr = keywordstr[1:-1]
+    # here only strip the blank with strip newline is to compliant with
+    # c code
+    keywordstr = keywordstr.strip("[ \t]")
+    keywordstr = keywordstr.replace('\n','')
+    keywordstr = keywordstr.replace('\t','')
+    
+    return keywordstr
+
 def parse_sqls(sqlstr):
     sqlstr = sqlstr.strip()
     if sqlstr[0] == '{':
@@ -63,6 +76,8 @@ def parse_sqls(sqlstr):
 
 # List of token names.
 tokens = [
+    'KEYWORD',
+    'KEYWORDCLAUSE',
     'SETUP',
     #'SQLBLOCK',
     'SQLCLAUSE',
@@ -78,6 +93,7 @@ tokens = [
     ]
 
 # Regular expression rules for simple tokens
+t_KEYWORD = r'keyword'
 t_SETUP = r'setup'
 #t_SQLBLOCK = r'\{[\w\n ;()%,\_\-]+\}'
 #t_SQLCLAUSE = r'[a-zA-Z0-9 \t%-_()$|\n\r=\']+;'
@@ -95,6 +111,12 @@ t_ID = r'\"[a-zA-z0-9]+\"'
 #def t_SQLBLOCK(t):
 #    r'{.+}'
 #    return t
+
+def t_KEYWORDCLAUSE(t):
+    r'\[[\s\S]+?\]'
+    raw = t.value
+    t.value = simple_parse_keywords(raw)
+    return t
 
 def t_SQLCLAUSE(t):
     r'\{[\s\S]+?\}'

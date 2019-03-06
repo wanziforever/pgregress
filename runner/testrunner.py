@@ -34,6 +34,7 @@ from testcase.modules import SQLBlock
 import time
 import logging
 import datetime
+import xml.dom.minidom
 
 from exc import (
     WaitDataTimeoutException,
@@ -79,7 +80,8 @@ class TestRunner(object):
         self._backend_pids = []
         self._errorsteps = {} # {step: errormsg}
 
-    def run(self, dry_run=False):
+    #def run(self, dry_run=False):
+    def run(self,case_type):
         """TestRunner execution interface, it will control the testcase
         running main procedure. it also can run a dry run.
 
@@ -92,9 +94,8 @@ class TestRunner(object):
           >>> start the permutation executions
           >>> clear the maintainace and test running db connections
 
-        :type dry_run: Boolen
-        :param dry_run: Tell the function whether need a dry run
-
+        :type case_type: String
+        : rse_keywords_listparam case_type: Tell the function which kind of case is running,spec or spt
         ..note:
           all the sqls in setup and teardown section will have a list type
           sqls in step is a string type, refer to the description of parser
@@ -102,9 +103,12 @@ class TestRunner(object):
         """
         self._testcase.build()
 
-        if dry_run:
-            self._start_dry_run()
-            return
+       # if dry_run:
+        #    self._start_dry_run()
+         #   return
+
+        if case_type == 'python':
+            self._start_exec_keywords()       
 
         self._make_maint_session()
         self._make_test_sessions()
@@ -115,6 +119,35 @@ class TestRunner(object):
 
         self._clear_test_sessions()
         self._clear_maint_session()
+
+    def _start_exec_keywords(self):
+       command_list = self._parse_keywords_list()
+       for cmd in command_list:
+           length = len(cmd)
+           i = 0
+           exec_cmd = 'python '
+           while i<length:
+               exec_cmd = exec_cmd + cmd[i] + ' '
+               i = i+1
+           os.system(exec_cmd)    
+
+    def _parse_keywords_list(self):
+        commands = []
+        keywords_list = self._testcase.keywords()
+
+        xmlpath=os.path.abspath("keywords.xml")
+        dom = xml.dom.minidom.parse(xmlpath)
+        root = dom.documentElement
+        keywordslist = root.getElementsByTagName('operation')
+     
+        for item in keywords_list:
+            item = item.split()
+            for keyword in keywordslist:
+                if keyword.getAttribute('keyword') == item[0]:
+                    func = keyword.getAttribute("script")
+                    item[0]=str(func)
+                    commands.append(item)
+        return commands
 
     def _clear_tmp_data(self):
         self._waitings = []
@@ -675,6 +708,19 @@ def usage():
 if __name__ == "__main__":
     import sys
     case_path = ''
+    case_type = 'spec'
+    if len(sys.argv) == 3:
+        case_path = sys.argv[2]
+        case_type = 'python'
+    elif len(sys.argv) == 2:
+        case_path = sys.argv[1]
+    else:
+        usage()
+        exit(1)
+    TestRunner(case_path).run(case_type)
+
+    '''
+    # Maggie redefine this part, in the new code, the is_dry_run is abandoned
     is_dry_run = False
     if len(sys.argv) == 2:
         case_path = sys.argv[1]
@@ -693,4 +739,4 @@ if __name__ == "__main__":
         TestRunner(case_path).run(dry_run=True)
     else:
         TestRunner(case_path).run()
-    
+    '''
