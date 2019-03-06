@@ -1,8 +1,8 @@
 host = '127.0.0.1'
 port = 5866
 dbname = 'highgo'
-user='sunhuihui'
+user='gitlab-runner'
 password=''
-installation='/home/sunhuihui/hgdb5/'
-testcases='/home/sunhuihui/regression/'
-runner_output_to_streen=True
+installation='/home/gitlab-runner/HighGo/'
+testcases='/home/gitlab-runner/regression/'
+runner_output_to_streen=False

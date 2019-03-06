@@ -8,4 +8,5 @@ __pycache__
 !/data/offical/
 !/data/offical/expected/
 !/data/offical/expected/*
+config.py
 
