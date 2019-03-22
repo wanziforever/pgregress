@@ -36,10 +36,11 @@ class ProfileReport(object):
         fail.
         """
         while True:
+            print ("result is:",result)
             if result in ['ok', 'fail']:
                 break
-            if result in [True, False]:
-                result = 'ok' if result else 'fail'
+            if result in ['True', 'False']:
+                result = 'ok' if result=='True' else 'fail'
                 break
             break
 
