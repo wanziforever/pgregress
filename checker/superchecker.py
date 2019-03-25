@@ -4,9 +4,7 @@ import subprocess
 from report import ProfileReport
 from utils.file import create_directory
 
-logger = logging.getLogger("Checker")
-
-class Checker(object):
+class SuperChk(object):
     """
     This class is used to check the difference between profile's result and expected result, 
     then generate the report file.

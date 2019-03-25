@@ -67,8 +67,8 @@ if __name__ == "__main__":
         if profile._ptype not in list(strategy_map.keys()):
             logger.error("unknown strategy name: %s" % profile._ptype)
             exit()
-        app_mod = importlib.import_module(strategy_map[profile._ptype][0])
-        chk_mod = importlib.import_module(strategy_map[profile._ptype][2])
+        app_mod = importlib.import_module('application.'+strategy_map[profile._ptype][0])
+        chk_mod = importlib.import_module('checker.'+strategy_map[profile._ptype][2])
         chk = chk_mod.Checker(profile)
         app = app_mod.Application(profile,chk)
 

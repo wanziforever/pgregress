@@ -11,6 +11,10 @@
   <operation keyword="HOLD_ON" script="keywords/wait_for_seconds.py" desc="wait some time">
     <arg desc="time to wait(seconds)">seconds</arg>
   </operation>
+  <operation keyword="SEND_CMD" script="keywords/send_cmd.py" desc="send commands to specified server">
+    <arg desc="the command that will be sent">cmd</arg>
+    <arg desc="the server name going to execute commands">server</arg>
+  </operation>
   <operation keyword="OTHERS" script="keywords/others.py" desc="other scripts to support">
   </operation>
 </operations>

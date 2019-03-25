@@ -1,4 +1,4 @@
 #!/usr/bin/python
 import sys
+print("wait %s minutes for highgo DB restarting...." % sys.argv[1])
 
-print("wait %s minutes for highgo DB restartingt...." % sys.argv[1])

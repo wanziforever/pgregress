@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <strategies>
-    <strategy name="multisession" applicationClass="multiapp" profileClass="multiprofile" checkerClass="multichecker"/>
-    <strategy name="singlesession" applicationClass="singleapp" profileClass="singleprofile" checkerClass="singlechecker"/>
-    <strategy name="scriptsession" applicationClass="scriptapp" profileClass="scriptprofile" checkerClass="scriptchecker"/>
+    <strategy name="multisession" applicationClass="multiapp" profileClass="multiprofile" checkerClass="multichk"/>
+    <strategy name="singlesession" applicationClass="singleapp" profileClass="singleprofile" checkerClass="singlechk"/>
+    <strategy name="scriptsession" applicationClass="scriptapp" profileClass="scriptprofile" checkerClass="scriptchk"/>
 </strategies>
