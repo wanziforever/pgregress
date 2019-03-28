@@ -5,15 +5,19 @@ PROFILE_REPORTS = {}
 def registe_report(name, report):
     PROFILE_REPORTS[name] = report
 
-class GlobalReport(object):
-    """a global report manager, all the report will register its
-    information to this manager, and generate report globally
-    """
-    @staticmethod
-    def profile_report_gen():
-        for name, report  in PROFILE_REPORTS.items():
-            print("generating report for profile", name)
-            report.generate_report()
+def generate_report_html(report_position):
+    templateLoader = jinja2.FileSystemLoader(searchpath="./report")
+    templateEnv = jinja2.Environment(loader=templateLoader)
+    TEMPLATE_FILE = "report_template.html"
+    template = templateEnv.get_template(TEMPLATE_FILE)
+    report_list = list(PROFILE_REPORTS.values())
+    content = template.render(reports=report_list)
+    
+    with open(report_position, "w") as fd:
+        fd.write(content)
+
+    print("The test report summary was generated to", report_position)
+
 
 class ProfileReport(object):
     def __init__(self, title=""):
@@ -73,6 +77,7 @@ class ProfileReport(object):
             else:
                 self._fail += 1
 
+
     def generate_report_html(self, report_position):
         templateLoader = jinja2.FileSystemLoader(searchpath="./report")
         templateEnv = jinja2.Environment(loader=templateLoader)
@@ -130,6 +135,3 @@ class ProfileReport(object):
 
             fd.write("\n".join(s))
             print("test report was generated to", report_position)
-
-            
-            

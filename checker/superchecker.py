@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 import subprocess
 from report import ProfileReport
@@ -19,7 +20,6 @@ class SuperChk(object):
         self._report_txt = os.path.join(self._outputs_dir, "report.txt")
         self._report = ProfileReport(profile.name)
         self._check_directories()
-
 
     def _check_directories(self):
         """prepare the required directories
@@ -87,12 +87,13 @@ class SuperChk(object):
         self._report.add_case_info(case,'False','目标结果对比错误')
         return False
 
-    def _report_gen(self,start_time,end_time):
+    def _reportdata_gen(self,start_time,end_time):
         self._report.set_start_time(
             start_time.strftime("%Y-%m-%d %H:%M:%S")
             )
         self._report.set_end_time(
             end_time.strftime("%Y-%m-%d %H:%M:%S")
             )
+        self._report._gen_statistic()
         self._report.generate_report_html(self._report_html)
         self._report.generate_report_text(self._report_txt)

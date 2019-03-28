@@ -13,7 +13,6 @@ import logging
 import threading
 import os
 import config
-from report import ProfileReport
 from application.superapp import SuperApp
 
 RUNNER_LOG_TO_SCREEN = config.runner_output_to_streen
@@ -81,6 +80,10 @@ class Application(SuperApp):
 
         logger.debug("cases run out!")
         SuperApp._end_profile_prompt(self)
+
+        logger.info("calculate the report data")
+        self.checker._reportdata_gen(self._start_time,self._end_time)
+
 
     def _start_batch(self, batch):
         """execute a batch of test cases parallelly

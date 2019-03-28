@@ -13,7 +13,6 @@ import logging
 import threading
 import os
 import config
-from report import ProfileReport
 
 _DATA_PATH = './tmp_instance/data'
 _LOG_PATH = './tmp_instance/log'

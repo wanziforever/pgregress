@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import time
 import os
 import importlib
 from profile import Profile
@@ -9,6 +10,7 @@ import logging
 import xml.dom.minidom as xmldom
 import config
 import traceback
+from report import generate_report_html
 logger = logging.getLogger('main')
 
 def help():
@@ -19,6 +21,7 @@ logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger('main')
 test_data_dir = config.testcases
+html_log = config.html_report
 
 def all_profiles():
     """list all the valid test profiles
@@ -74,10 +77,15 @@ if __name__ == "__main__":
 
         try:
             app.run()
-            chk._report_gen(app._start_time,app._end_time)
+            #chk._report_gen(app._start_time,app._end_time)
         except Exception as e:
             print()
             logger.error(str(e))
             logger.debug(traceback.format_exc())
         else:    
             logger.debug('Done')
+    generate_report_html(html_log)
+#    generate_report_text(txt_log)
+    logger.info('Report generate done')
+
+
