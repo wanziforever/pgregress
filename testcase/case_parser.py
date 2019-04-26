@@ -64,11 +64,6 @@ def p_keywords_statement(p):
     #statements['keywords'] = keywords_list
     p[0] = keywords_list
 
-# def p_comments_block(p):
-#     '''comment_block : comment_block COMMENTS
-#                    | COMMENTS'''
-#     p[0] = "comments"
-
 def p_empty(p):
     '''empty : '''
     pass
