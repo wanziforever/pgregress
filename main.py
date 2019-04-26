@@ -21,7 +21,19 @@ logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger('main')
 test_data_dir = config.testcases
-html_log = config.html_report
+#html_log = config.html_report
+
+def show_help_info():
+    """show the help info of the main.py 
+    """
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Run regression case automatically.')
+    parser.add_argument('test mode', choices=['installcheck','check'],
+                                     help='''installcheck: this will use an already installed DB                        
+                                             check       : this will start a new temparory DB instance''')
+    
+    args = parser.parse_args()
 
 def all_profiles():
     """list all the valid test profiles
@@ -64,6 +76,7 @@ def parse_strategy():
 
 # main
 if __name__ == "__main__":
+    show_help_info()
     parse_strategy()
     for profile in all_profiles():
         profile = Profile(profile, use_schedule=True)
@@ -76,16 +89,14 @@ if __name__ == "__main__":
         app = app_mod.Application(profile,chk)
 
         try:
-            app.run()
+            app.run(sys.argv[1])
             #chk._report_gen(app._start_time,app._end_time)
         except Exception as e:
             print()
             logger.error(str(e))
             logger.debug(traceback.format_exc())
         else:    
-            logger.debug('Done')
-    generate_report_html(html_log)
+            logger.debug('Test Done!')
+    generate_report_html()
 #    generate_report_text(txt_log)
-    logger.info('Report generate done')
-
-
+    logger.info('Summary Report generate done')

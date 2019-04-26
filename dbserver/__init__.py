@@ -317,7 +317,7 @@ class DBServer(object):
         """PostgreSQL process is running
 
         :rtype: Boolen
-        :returns: whetther the server is running
+        :returns: whether the server is running
         """
         return self._popen.poll() is None
 

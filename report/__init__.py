@@ -1,11 +1,15 @@
+import sys
+sys.path.append("..")
 import jinja2
+import config
 
 PROFILE_REPORTS = {}
+report_position = config.testcases
 
 def registe_report(name, report):
     PROFILE_REPORTS[name] = report
 
-def generate_report_html(report_position):
+def generate_report_html():
     templateLoader = jinja2.FileSystemLoader(searchpath="./report")
     templateEnv = jinja2.Environment(loader=templateLoader)
     TEMPLATE_FILE = "report_template.html"
@@ -13,10 +17,11 @@ def generate_report_html(report_position):
     report_list = list(PROFILE_REPORTS.values())
     content = template.render(reports=report_list)
     
-    with open(report_position, "w") as fd:
+    
+    with open(report_position+'report_summary.html', "w") as fd:
         fd.write(content)
 
-    print("The test report summary was generated to", report_position)
+    print("The test report summary was saved under directory:", report_position)
 
 
 class ProfileReport(object):

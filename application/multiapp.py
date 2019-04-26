@@ -53,66 +53,16 @@ class Application(SuperApp):
     """
     def __init__(self, profile, checker):
         #super(MultiApp,self).__init__(profile,checker)
-        SuperApp.__init__(self,profile,checker)
-
-    def run(self):
-        """base the profile configration, start the test
-        """
-        SuperApp._start_profile_prompt(self)
-        self.checker._check_directories()
-
-        if self.profile.use_schedule():
-            schedule = self.profile.schedule()
-            batch = schedule.next_batch()
-
-            while batch:
-                if batch.len() > 1:
-                    self._start_batch(batch)
-                else:
-                    self._start_test(batch.tests()[0])
-                batch = schedule.next_batch()
-        else:
-
-            case = self.profile.next_case()
-            while case:
-                self._start_test(case)
-                case = self.profile.next_case()
-
-        logger.debug("cases run out!")
-        SuperApp._end_profile_prompt(self)
-
-        logger.info("calculate the report data")
-        self.checker._reportdata_gen(self._start_time,self._end_time)
-
+        super().__init__(profile,checker)
 
     def _start_batch(self, batch):
         """execute a batch of test cases parallelly
 
         if there is on one test case in the batch, just run it singlly
         """
-        def start_prompt():
-            import datetime
-            now = datetime.datetime.now()
-            print("----------start batch of test------------")
-            print(" Start at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
-            for test in batch.tests():
-                print("  %s" % test.name())
-            print("-----------------------------------------")
+        #super()._make_PGServer()
 
-        def end_prompt(results):
-            import datetime
-            now = datetime.datetime.now()
-            print("----------end batch of test--------------")
-            print(" End at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
-            tests = batch.tests()
-            for i in range(batch.len()):
-                result = "ok" if results[i] is True else "fail"
-                print("  %s ... %s" % (batch[i].name(), result))
-            print("-----------------------------------------")
-
-        start_prompt()
-
-        SuperApp._make_PGServer(self)
+        super()._start_batch_prompt(batch)
 
         import subprocess
         processes = []
@@ -139,9 +89,9 @@ class Application(SuperApp):
 
         diff_results = self.checker._make_many_diff(batch.tests())
         
-        SuperApp._clear_PGServer(self)
+        #super()._clear_PGServer()
 
-        end_prompt(diff_results)
+        super()._end_batch_prompt(batch,diff_results)
 
 
     def _start_test(self, testcase):
@@ -149,28 +99,9 @@ class Application(SuperApp):
         """
         logger.debug("processing case \n%s" % str(testcase))
 
-        def start_prompt():
-            import datetime
-            now = datetime.datetime.now()
-            print("+----------------------------------------")
-            print(" TestRunner for %s" % testcase.name())
-            print(" Start at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
-            print("----------------------------------------+")
-
-        def end_prompt(result):
-            import datetime
-            now = datetime.datetime.now()
-            print("+----------------------------------------")
-            #print(" TestRunner for %s" % testcase)
-            print(" Case end at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
-            result = "ok" if result else "fail"
-            print("  %s ... %s" % (testcase.name(), result))
-            print("----------------------------------------+")
-            
-
-        SuperApp._make_PGServer(self)
+        #super()._make_PGServer()
         
-        start_prompt()
+        super()._start_testcase_prompt(testcase)
         
         # here why we want to run the testcase in a seperate process is
         # to capture the pure output of the testcase runner. run testcase
@@ -214,6 +145,6 @@ class Application(SuperApp):
 
         diff_result = self.checker._make_diff(testcase)
 
-        SuperApp._clear_PGServer(self)
+        #super()._clear_PGServer()
         
-        end_prompt(diff_result)
+        super()._end_testcase_prompt(testcase,diff_result)

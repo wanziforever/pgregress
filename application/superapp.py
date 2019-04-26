@@ -7,16 +7,22 @@ that one profile should contain one kind of testcase.
 """
 
 from dbserver import DBServer
+from dbserver import get_installation_bin_path
+from dbserver import get_installation_lib_path
 #from utils.file import create_directory
 import time
+import datetime
 import logging
 import threading
 import os
 import config
+import subprocess
 
 _DATA_PATH = './tmp_instance/data'
 _LOG_PATH = './tmp_instance/log'
 _PORT = config.port
+_DBNAME = config.dbname
+_INSTALLDIR = config.installation
 logger = logging.getLogger('SuperApp')
 
 class SuperApp(object):
@@ -44,8 +50,49 @@ class SuperApp(object):
         if not os.path.exists(logfile):
             # here i didn't check it is a file or a dir
             return
-        logger.info("clear the postmaster log before test start")
+        logger.info("Cleanup the existed postmaster log")
         open(logfile, 'w').close()
+
+
+    def _check_DB_ready(self):
+        """whether PostgreSQL is accepting message
+
+        although the process of the database server may be up, but it
+        maybe cannot accept message, this function use psql to send
+        message to check whether the server is really can handle message
+
+        :rtype: Boolen
+        :returns: whether the database server is running and can accept
+                  message (means psql can connect to)
+        """
+        logger.info('TestMode:installcheck, check the PG server is running......')
+
+        child = subprocess.run('ps -ef |grep postgres', shell=True, stdout=subprocess.PIPE)
+        if child.returncode != 0:
+            logger.info('Postgremaster process is NOT running, please confirm your DB is started!')
+            exit()
+        else:
+            bin_path = get_installation_bin_path()
+            psql = os.path.join(bin_path, 'psql')
+            lib_path = get_installation_lib_path()
+            logger.debug('DBServer::is_ready() bin: %s, lib: %s'
+                         % (psql, lib_path))
+            env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
+            cmd = " ".join([
+                psql, '-p', str(_PORT), str(_DBNAME), '<', '/dev/null'
+                ])
+            child = subprocess.run(
+                cmd, shell=True, env=env, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+                )
+
+            if child.returncode != 0:
+                logger.debug("psql connect fail for reason %s"
+                             % child.stderr)
+                logger.info('DB server cannot be connected, please confirm your DB is ready!')
+                exit()
+        logger.info('PG server is ready,start to run test......')
+
 
     def _make_PGServer(self):
         """initialize a database instance, and start the database service
@@ -54,6 +101,7 @@ class SuperApp(object):
           before start the service, some parameters in configuration should
           be added or changed, they are mainly used to turn on enough logs
         """
+        logger.info('TestMode:check,try to start a PG server......')
         DBServer.initDB(_DATA_PATH)
         DBServer.set_dbconf(_DATA_PATH,
                             port=_PORT,
@@ -70,16 +118,17 @@ class SuperApp(object):
             logger.debug("trying to start the PostgreSQL service")
             time.sleep (1)
 
-        logger.debug('PG server is ready to accept message')
+        logger.info('PG server is ready,start to run test......')
 
     def _clear_PGServer(self):
         self.server.stop(_DATA_PATH)
         DBServer.removeDB(_DATA_PATH)
         if DBServer.check_database_data_exist(_DATA_PATH):
             raise Exception("fail to remove the DB data")
+       
+        logger.info('PG server is cleared')
 
     def _start_profile_prompt(self):
-        import datetime
         now = datetime.datetime.now()
         print("+----------------------------------------")
         print(" Profile for %s" % self.profile.path)
@@ -88,18 +137,89 @@ class SuperApp(object):
         self._start_time = now
 
     def _end_profile_prompt(self):
-        import datetime
         now = datetime.datetime.now()
         print("+----------------------------------------")
         print(" Profile for %s" % self.profile.path)
         print(" End at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
         print("----------------------------------------+")
         self._end_time = now
-        
-    def run(self):
+
+    def _start_batch_prompt(self,batch):
+        now = datetime.datetime.now()
+        print("----------start batch of test------------")
+        print(" Start at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
+        for test in batch.tests():
+            print("  %s" % test.name())
+        print("-----------------------------------------")
+
+    def _end_batch_prompt(self,batch,results):
+        now = datetime.datetime.now()
+        print("----------end batch of test--------------")
+        print(" End at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
+        tests = batch.tests()
+        for i in range(batch.len()):
+            result = "ok" if results[i] is True else "fail"
+            print("  %s ... %s" % (batch[i].name(), result))
+        print("-----------------------------------------")
+
+
+    def _start_testcase_prompt(self,testcase):
+        now = datetime.datetime.now()
+        print("+----------------------------------------")
+        print(" TestRunner for %s" % testcase.name())
+        print(" Start at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
+        print("----------------------------------------+")
+
+
+    def _end_testcase_prompt(self,testcase,result):
+        now = datetime.datetime.now()
+        print("+----------------------------------------")
+        #print(" TestRunner for %s" % testcase)
+        print(" Case end at %s" % now.strftime("%Y-%m-%d %H:%M:%S"))
+        result = "ok" if result else "fail"
+        print("  %s ... %s" % (testcase.name(), result))
+        print("----------------------------------------+")
+
+
+    def run(self,test_mode):
         """base the profile configration, start the test
         """
-        print("application run function, cutomzied class will re-write it")
+
+        self._start_profile_prompt()
+        self.checker._check_directories()
+       
+
+        if test_mode == 'check':
+            self._make_PGServer()
+        else:
+            self._check_DB_ready()
+
+        if self.profile.use_schedule():
+            schedule = self.profile.schedule()
+            batch = schedule.next_batch()
+
+            while batch:
+                if batch.len() > 1:
+                    self._start_batch(batch)
+                else:
+                    self._start_test(batch.tests()[0])
+                batch = schedule.next_batch()
+        else:
+
+            case = self.profile.next_case()
+            while case:
+                self._start_test(case)
+                case = self.profile.next_case()
+
+        logger.debug("cases run out!")
+ 
+        if test_mode == 'check':
+            self._clear_PGServer()
+
+        self._end_profile_prompt()
+        logger.info("calculate the report data")
+        self.checker._reportdata_gen(self._start_time,self._end_time)
+
 
     def _start_batch(self, batch):
         """execute a batch of test cases parallelly
