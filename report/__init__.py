@@ -21,7 +21,7 @@ def generate_report_html():
     with open(report_position+'report_summary.html', "w") as fd:
         fd.write(content)
 
-    print("The test report summary was saved under directory:", report_position)
+    print("report summary was generated to %sreport_summary.html" %report_position)
 
 
 class ProfileReport(object):

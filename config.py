@@ -5,5 +5,5 @@ user='sunhuihui'
 password=''
 installation='/home/sunhuihui/hgdb5/'
 testcases='/home/sunhuihui/regression/'
-html_report='/home/sunhuihui/regression/report_summary.html'
 runner_output_to_streen=True
+#runner_output_to_streen=False

@@ -99,4 +99,3 @@ if __name__ == "__main__":
             logger.debug('Test Done!')
     generate_report_html()
 #    generate_report_text(txt_log)
-    logger.info('Summary Report generate done')
