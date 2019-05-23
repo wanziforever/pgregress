@@ -23,7 +23,6 @@ def simple_parse_keywords(keywordstr):
     keywordstr = keywordstr.strip("[ \t]")
     keywordstr = keywordstr.replace('\n','')
     keywordstr = keywordstr.replace('\t','')
-    
     return keywordstr
 
 def parse_sqls(sqlstr):

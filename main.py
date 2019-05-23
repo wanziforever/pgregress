@@ -92,7 +92,6 @@ if __name__ == "__main__":
             app.run(sys.argv[1])
             #chk._report_gen(app._start_time,app._end_time)
         except Exception as e:
-            print()
             logger.error(str(e))
             logger.debug(traceback.format_exc())
         else:    

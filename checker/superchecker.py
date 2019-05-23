@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import logging
 import subprocess
@@ -75,6 +76,13 @@ class SuperChk(object):
             return False
         if not os.path.exists(result):
             return False
+ 
+        sed_command = "sed  -i \'/NOTICE:/,/Valied Until/d\' "+result
+        subprocess.check_call(sed_command,shell=True,
+                              stdout=sys.stdout,
+                              stderr=sys.stderr)
+
+        os.system(sed_command)
 
         complete = subprocess.run(['diff', expected, result],
                                   stdout=subprocess.PIPE,

@@ -122,31 +122,36 @@ class TestRunner(object):
 
     def _start_exec_keywords(self):
        command_list = self._parse_keywords_list()
-       for cmd in command_list:
-           length = len(cmd)
-           i = 0
-           exec_cmd = 'python '
-           while i<length:
-               exec_cmd = exec_cmd + cmd[i] + ' '
-               i = i+1
-           os.system(exec_cmd)    
+       if len(command_list) == 0:
+           print('no shell command, continue other test steps')
+       else:
+           for cmd in command_list:
+               length = len(cmd)
+               i = 0
+               exec_cmd = 'python '
+               while i<length:
+                   exec_cmd = exec_cmd + cmd[i] + ' '
+                   i = i+1
+               os.system(exec_cmd)    
 
     def _parse_keywords_list(self):
         commands = []
         keywords_list = self._testcase.keywords()
-
-        xmlpath=os.path.abspath("keywords.xml")
-        dom = xml.dom.minidom.parse(xmlpath)
-        root = dom.documentElement
-        keywordslist = root.getElementsByTagName('operation')
+        if len(keywords_list) == 0:
+            print('there is no shell commands')
+        else:
+            xmlpath=os.path.abspath("keywords.xml")
+            dom = xml.dom.minidom.parse(xmlpath)
+            root = dom.documentElement
+            keywordslist = root.getElementsByTagName('operation')
      
-        for item in keywords_list:
-            item = item.split()
-            for keyword in keywordslist:
-                if keyword.getAttribute('keyword') == item[0]:
-                    func = keyword.getAttribute("script")
-                    item[0]=str(func)
-                    commands.append(item)
+            for item in keywords_list:
+                item = item.split()
+                for keyword in keywordslist:
+                    if keyword.getAttribute('keyword') == item[0]:
+                        func = keyword.getAttribute("script")
+                        item[0]=str(func)
+                        commands.append(item)
         return commands
 
     def _clear_tmp_data(self):
@@ -708,12 +713,12 @@ def usage():
 if __name__ == "__main__":
     import sys
     case_path = ''
-    case_type = 'spec'
     if len(sys.argv) == 3:
         case_path = sys.argv[2]
         case_type = 'python'
     elif len(sys.argv) == 2:
         case_path = sys.argv[1]
+        case_type = 'spec'
     else:
         usage()
         exit(1)

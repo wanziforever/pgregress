@@ -2,12 +2,15 @@
 """
 
 import os
+import sys
 import re
 import logging
 import time
 import subprocess
 import threading
 import config
+import pexpect
+sys.path.append('.')
 
 logger = logging.getLogger('DBServer')
 _PORT = config.port
@@ -105,11 +108,12 @@ class DBServer(object):
         self._popen = popen
         self._port = port
         if not self.is_running():
-            logger.debug("the DBServer fail to start")
             logger.debug(
                 'PostgreSQL Init process fail for %s' % self.exit_code()
                 )
             raise Exception("DBServer fail to start")
+        else:
+            logger.info('HGDB Init process success')
 
     @staticmethod
     def set_dbconf(data_path, **params):
@@ -123,6 +127,8 @@ class DBServer(object):
         :type params: dict
         :param params: the parameters and values to change or add
         """
+        os.system('cp /home/sunhuihui/pgregress/utils/server*  /home/sunhuihui/pgregress/tmp_instance/data')
+        os.system('chmod 600 /home/sunhuihui/pgregress/tmp_instance/data/server*')
         new_port = _PORT
         conf_file = os.path.join(data_path, 'postgresql.conf')
         for name, value in params.items():
@@ -140,7 +146,9 @@ class DBServer(object):
         lib_path = get_installation_lib_path()
         logger.debug("DBServer::initDB() bin: %s, lib: %s"
                      % (initdb, lib_path))
-        env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
+        '''
+        #env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
+        env = {'LD_LIBRARY_PATH': lib_path}
         child = subprocess.run(
             [initdb, '-D', data_path, '--no-clean', '--no-sync', '--no-locale'],
             env=env, stdout=subprocess.PIPE,
@@ -154,10 +162,35 @@ class DBServer(object):
             #raise Exception(
             #    "fail to do initdb for (%s)" % child.stderr
             #    )
-        logger.debug(
-            'database initialize successfully under %s' % data_path
-            )
-        logger.debug(child.stdout)
+        '''
+        initdb_cmd = initdb + ' -D ' + data_path
+        child = pexpect.spawn(initdb_cmd, encoding='utf-8')
+        child.logfile = sys.stdout
+        try:
+            child.expect('Enter new sysdba password:')
+            child.send('highgo123\n')
+            child.expect('Enter it again:')
+            child.send('highgo123\n')
+            
+            child.expect('Enter new syssao password:')
+            child.send('highgo123\n')
+            child.expect('Enter it again:')
+            child.send('highgo123\n')
+            
+            child.expect('Enter new syssso password:')
+            child.send('highgo123\n')
+            child.expect('Enter it again:')
+            child.send('highgo123\n')
+            
+            child.expect('Success')
+            child.close()
+            logger.debug(
+                'database initialize successfully under %s' % data_path
+                 )
+        except:
+            child.close()
+            logger.debug('database initialize fail:',str(child))
+        #logger.debug(child.stdout)
 
     @staticmethod
     def get_postmaster_status(data_path):
@@ -212,13 +245,14 @@ class DBServer(object):
         if log_path:
             logger.debug("log directory: %s" % log_path)
             
-        env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
+        env = {'LD_LIBRARY_PATH': lib_path}
 
         child = None
         postgres_cmd = [postgres, '-D', data_path, '-F', '-d', '5']
         child = subprocess.Popen(postgres_cmd,
                                  universal_newlines=True,
-                                 env=env, stdout=subprocess.PIPE,
+                                 env=env, 
+                                 stdout=subprocess.PIPE,
                                  stderr=subprocess.STDOUT)
 
         if log_path:
@@ -232,7 +266,8 @@ class DBServer(object):
 
         return DBServer(child, _PORT)
 
-    def stop(self, data_path):
+    @staticmethod
+    def stopDB(data_path,log_path=None):
         """simply use kill signal to kill the postgresql server, without
         taking care the data loss, we will finish the test case, and will
         not use the data for ever.
@@ -262,17 +297,42 @@ class DBServer(object):
             
         logger.debug('server is stopped')
         """
-        while self.is_running():
-            try:
-                bin_path = get_installation_bin_path()
-                pg_ctl = os.path.join(bin_path, 'pg_ctl')
-                res=subprocess.check_call([pg_ctl,'-D',data_path,'stop','-m','immediate'])
-                #res=subprocess.check_call([pg_ctl,'-D',data_path,'stop','-w'])
-                logger.debug("stop the HGDB server done,the result is: %d" %res)
-            except subprocess.CalledProcessError as e:
-                logger.debug("the command is:%s" % e.cmd)
-                logger.debug("the returncode is:%d" % e.returncode)
-                logger.debug("the output is:%s" % e.output)
+        bin_path = get_installation_bin_path()
+        lib_path = get_installation_lib_path()
+        pg_ctl = os.path.join(bin_path, 'pg_ctl')
+        env = {'LD_LIBRARY_PATH': lib_path}
+        postgres_cmd = [pg_ctl,'-D',data_path,'stop','-m','immediate']
+        child = subprocess.Popen(postgres_cmd,
+                         universal_newlines=True,
+                         env=env, 
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT)
+        if log_path:
+            t = threading.Thread(target=capture_server_output,
+                                 args=(child, "%s/postmaster.log"%log_path))
+            t.start()
+
+        '''
+        check_all() cannot handle the output file
+        log_file = os.path.join(log_path,'postmaster.log')
+        try:
+            log = open(log_file,'ab')
+            child = subprocess.check_call(postgres_cmd,
+                         universal_newlines=True,
+                         env=env, 
+                         stdout=sys.stdout,
+                         stderr=sys.stderr)
+                         #stdout=log,
+                         #stderr=log)
+
+            time.sleep(0.2)
+            log.close()
+
+        except subprocess.CalledProcessError as e:
+            logger.info('stop DB fail')
+            logger.debug('stop DB faili with ',e.output)
+        '''
+
 
     def is_ready(self):
         """whether PostgreSQL is accepting message
@@ -290,20 +350,22 @@ class DBServer(object):
                 'PostgreSQL Init process fail for %s' % self.exit_code()
                 )
             logger.debug(self._popen.stderr.read())
-            raise Exception("DBServer fail to start")
+            raise Exception("DBServer is not ready")
         
         bin_path = get_installation_bin_path()
         psql = os.path.join(bin_path, 'psql')
         lib_path = get_installation_lib_path()
         logger.debug('DBServer::is_ready() bin: %s, lib: %s'
                      % (psql, lib_path))
-        env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
+        #env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
+        env = {'LD_LIBRARY_PATH': lib_path,'PGPASSWORD':'highgo123'}
         cmd = " ".join([
-            psql, '-p', str(self._port), str(_DBNAME), '<', '/dev/null'
+            psql, '-U', str(config.user), '-p', str(self._port), str(_DBNAME), '<', '/dev/null'
             ])
         child = subprocess.run(
-            cmd, shell=True, env=env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            cmd, shell=True, env=env, 
+            stdout=sys.stdout,
+            stderr=sys.stderr
             )
         
         if child.returncode != 0:

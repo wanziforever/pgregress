@@ -18,8 +18,6 @@ import os
 import config
 import subprocess
 
-_DATA_PATH = './tmp_instance/data'
-_LOG_PATH = './tmp_instance/log'
 _PORT = config.port
 _DBNAME = config.dbname
 _INSTALLDIR = config.installation
@@ -79,7 +77,7 @@ class SuperApp(object):
                          % (psql, lib_path))
             env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
             cmd = " ".join([
-                psql, '-p', str(_PORT), str(_DBNAME), '<', '/dev/null'
+                psql, '-U', str(config.user), '-p', str(_PORT), str(_DBNAME), '<', '/dev/null'
                 ])
             child = subprocess.run(
                 cmd, shell=True, env=env, stdout=subprocess.PIPE,
@@ -94,7 +92,7 @@ class SuperApp(object):
         logger.info('PG server is ready,start to run test......')
 
 
-    def _make_PGServer(self):
+    def _make_PGServer(self,data_path):
         """initialize a database instance, and start the database service
 
         ..note:
@@ -102,8 +100,8 @@ class SuperApp(object):
           be added or changed, they are mainly used to turn on enough logs
         """
         logger.info('TestMode:check,try to start a PG server......')
-        DBServer.initDB(_DATA_PATH)
-        DBServer.set_dbconf(_DATA_PATH,
+        DBServer.initDB(data_path)
+        DBServer.set_dbconf(data_path,
                             port=_PORT,
                             log_autovacuum_min_duration='0',
                             log_checkpoints='on',
@@ -111,19 +109,22 @@ class SuperApp(object):
                             log_lock_waits = 'on',
                             log_temp_files = '128kB',
                             max_prepared_transactions = '2')
+        logger.info('TestMode:check,DONE to config file......')
 
-        self.server = DBServer.start(_DATA_PATH, self.checker._logs_dir)
+        self.server = DBServer.start(data_path, self.checker._logs_dir)
         
         while not self.server.is_ready():
-            logger.debug("trying to start the PostgreSQL service")
+            logger.debug("keep trying to start the PostgreSQL service")
             time.sleep (1)
 
         logger.info('PG server is ready,start to run test......')
 
-    def _clear_PGServer(self):
-        self.server.stop(_DATA_PATH)
-        DBServer.removeDB(_DATA_PATH)
-        if DBServer.check_database_data_exist(_DATA_PATH):
+    def _clear_PGServer(self,data_path):
+        #DBServer.stopDB(self.server,data_path)
+        logger.info('TestMode:check,try to stop PG server......')
+        DBServer.stopDB(data_path, self.checker._logs_dir)
+        DBServer.removeDB(data_path)
+        if DBServer.check_database_data_exist(data_path):
             raise Exception("fail to remove the DB data")
        
         logger.info('PG server is cleared')
@@ -190,8 +191,12 @@ class SuperApp(object):
        
 
         if test_mode == 'check':
-            self._make_PGServer()
+            data_path = './tmp_instance/data'
+            #_LOG_PATH = './tmp_instance/log'
+            self._make_PGServer(data_path)
         else:
+            data_path = config.data_path
+            #_LOG_PATH = config.log_path
             self._check_DB_ready()
 
         if self.profile.use_schedule():
@@ -214,7 +219,7 @@ class SuperApp(object):
         logger.debug("cases run out!")
  
         if test_mode == 'check':
-            self._clear_PGServer()
+            self._clear_PGServer(data_path)
 
         self._end_profile_prompt()
         logger.info("calculate the report data")

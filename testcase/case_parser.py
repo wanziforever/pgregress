@@ -41,8 +41,7 @@ def p_statement_expression(p):
     '''statement : keywords_statement setup_multiple teardown_multiple session_statement
                  | setup_multiple teardown_multiple session_statement
                  | statement session_statement
-                 | statement permutation_statement
-                 | keywords_statement'''
+                 | statement permutation_statement'''
 
     # here we handle statement setup is to different the setup in session
     if len(p) == 5:

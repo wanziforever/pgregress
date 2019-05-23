@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <operations>
   <operation keyword="DB_RESTART"  script="keywords/db_restart.py" desc="restart the database instance">
-    <arg desc="max waiting time(seconds)">wait_time</arg>
+    <arg desc="the directory of DATA">data_path</arg>
   </operation>
   <operation keyword="DB_SET_CONFIG" script="keywords/db_set_config.py" desc="set the property in configuration file">
     <arg desc="file name going to configured">name</arg>

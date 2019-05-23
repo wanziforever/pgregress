@@ -64,7 +64,6 @@ class Application(SuperApp):
 
         super()._start_batch_prompt(batch)
 
-        #super()._make_PGServer()
         import subprocess
         processes = []
         env = os.environ.copy()
@@ -72,7 +71,7 @@ class Application(SuperApp):
 
         for case in batch.tests():
             child = subprocess.Popen(
-                [psql, '-d',config.dbname,'-f', case.path()],
+                [psql, '-U', config.user, '-d',config.dbname,'-f', case.path()],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 universal_newlines=True, env=env
                 )
@@ -90,8 +89,6 @@ class Application(SuperApp):
             child.wait()
         diff_results = self.checker._make_many_diff(batch.tests())
         
-        #super()._clear_PGServer()
-
         super()._end_batch_prompt(batch,diff_results)
 
     def _start_test(self, testcase):
@@ -110,7 +107,7 @@ class Application(SuperApp):
         psql = os.path.join(config.installation,'bin/','psql')
 
         child = subprocess.Popen(
-            [psql, '-d',config.dbname,'-f', testcase.path()],
+            [psql, '-U', config.user, '-d',config.dbname,'-f', testcase.path()],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             universal_newlines=True
             )

@@ -64,15 +64,13 @@ class Application(SuperApp):
 
         super()._start_batch_prompt(batch)
 
-        #super()._make_PGServer()
-
         import subprocess
         processes = []
         env = os.environ.copy()
 
         for case in batch.tests():
             child = subprocess.Popen(
-                ['python3', '-u', 'runner/testrunner.py','-p', case.path()],
+                ['python3', '-u', 'runner/testrunner_spt.py','-p', case.path()],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 universal_newlines=True, env=env
                 )
@@ -91,8 +89,6 @@ class Application(SuperApp):
 
         diff_results = self.checker._make_many_diff(batch.tests())
         
-        #super()._clear_PGServer()
-
         super()._end_batch_prompt(batch,diff_results)
 
 
@@ -101,8 +97,6 @@ class Application(SuperApp):
         """
         logger.debug("processing case \n%s" % str(testcase))
 
-        #super()._make_PGServer()
-        
         super()._start_testcase_prompt(testcase)
         
         # here why we want to run the testcase in a seperate process is
@@ -128,7 +122,7 @@ class Application(SuperApp):
         # method instead.
         import subprocess
         child = subprocess.Popen(
-            ['python3', '-u', 'runner/testrunner.py','-p', testcase.path()],
+            ['python3', '-u', 'runner/testrunner_spt.py','-p', testcase.path()],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             universal_newlines=True
             )
@@ -147,6 +141,4 @@ class Application(SuperApp):
 
         diff_result = self.checker._make_diff(testcase)
 
-        #super()._clear_PGServer()
-        
         super()._end_testcase_prompt(testcase,diff_result)
