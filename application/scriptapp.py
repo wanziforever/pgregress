@@ -70,7 +70,7 @@ class Application(SuperApp):
 
         for case in batch.tests():
             child = subprocess.Popen(
-                ['python3', '-u', 'runner/testrunner_spt.py','-p', case.path()],
+                ['python3', '-u', 'runner/testrunner_spt.py', case.path()],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 universal_newlines=True, env=env
                 )
@@ -122,7 +122,7 @@ class Application(SuperApp):
         # method instead.
         import subprocess
         child = subprocess.Popen(
-            ['python3', '-u', 'runner/testrunner_spt.py','-p', testcase.path()],
+            ['python3', '-u', 'runner/testrunner_spt.py', testcase.path()],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             universal_newlines=True
             )

@@ -21,7 +21,7 @@ def generate_report_html():
     with open(report_position+'report_summary.html', "w") as fd:
         fd.write(content)
 
-    print("report summary was generated to %sreport_summary.html" %report_position)
+    print("test report summary was generated to %sreport_summary.html" %report_position)
 
 
 class ProfileReport(object):
@@ -104,7 +104,7 @@ class ProfileReport(object):
         with open(report_position, "w") as fd:
             fd.write(content)
 
-        print("test report was generated to", report_position)
+        print("profile test report was generated to", report_position)
 
     def generate_report_text(self, report_position):
         self._gen_statistic()
@@ -139,4 +139,4 @@ class ProfileReport(object):
                 
 
             fd.write("\n".join(s))
-            print("test report was generated to", report_position)
+            print("profile test report was generated to", report_position)

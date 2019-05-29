@@ -5,11 +5,11 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Execute command on server.')
 parser.add_argument('command', help='the command will be executed.')
-parser.add_argument('server', help='the server on which command will be executed.')
+#parser.add_argument('server', help='the server on which command will be executed.')
 parser.parse_args()
 
 cmd = sys.argv[1]
-child = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE)
+child = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
 output, errors = child.communicate()
 
 # the output from network or disks is byte, should decode() to str.

@@ -1,45 +1,33 @@
-#!/usr/bin/python
-import sys
-import os
-#sys.path.append('/home/sunhuihui/pgregress')
-sys.path.append('.')
-import config
+#!/usr/bin/python env
+
 import subprocess
+import sys
+import time
+import config
 
+lib_path = os.path.joint(config.installtion,'lib')
+bin_path = os.path.joint(config.installtion,'bin')
+pg_ctl = os.path.joint(bin_path,'pg_ctl')
+log_file = '/home/sunhuihui/regression/purog/outputs/logs/shell_cmd.log'
 
-def stopDB(data_path):
-    log_file = os.path.join(log_path,'postmaster.log')
-    postgres_cmd = [pg_ctl,'-D',data_path,'stop','-m','immediate']
+def stop_db(data_path,log_file):
+    print('try to stop DB......\n')
+    env = {'LD_LIBRARY_PATH': lib_path}
+    stop_cmd = [pg_ctl,'-D',data_path,'stop','-m','immediate']
+    logfile = open(log_file,'w')
     try:
-        log = open(log_file,'ab')
-        child = subprocess.check_call(postgres_cmd,
-                     universal_newlines=True,
-                     env=env, 
-                     stdout=sys.stdout,
-                     stderr=sys.stderr)
-                     #stdout=log,
-                     #stderr=log)
+        return_code = subprocess.check_call(stop_cmd,
+                                 universal_newlines=True,
+                                 env=env, stdout=logfile,
+                                 stderr=subprocess.STDOUT)
 
-        time.sleep(0.2)
-        log.close()
+    except subprocess.CalledProcessError, exc:
+        print('stop DB faile with returncode:', exc.returncode)
+        print('output:', exc.output)
 
-    except subprocess.CalledProcessError as e:
-        logger.info('stop DB fail')
-        logger.debug('stop DB faili with ',e.output)
-
-
-_DATA_PATH = './tmp_instance/data'
-
-bin_path = os.path.join(config.installation, 'bin')
-pg_ctl = os.path.join(bin_path, 'pg_ctl')
-cmd = ' '.join([pg_ctl,'-D',_DATA_PATH,'restart'])
-
-print("DB restart command is: %s...." % cmd)
-
-return_code = subprocess.call(cmd,shell=True)
-
-if return_code == 0:
-    print('DB restart SUCCESS')
-else:
-    print('DB restart FAIL')
-
+    if return_code != 0:
+        print('FAILE! Stop HighGo DB fail, please check the log')
+    else:
+        print('SUCCESS! Stop HighGo DB done')
+ 
+stop_db(sys.argv[1])

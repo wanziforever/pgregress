@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import ply.lex as lex
+import xml.dom.minidom
 
 def simple_parse_sqls(sqlstr):
     sqlstr = sqlstr.strip()
@@ -12,18 +13,6 @@ def simple_parse_sqls(sqlstr):
     sqlstr = sqlstr.strip("[ \t]")
     
     return sqlstr
-
-def simple_parse_keywords(keywordstr):
-    keywordstr = keywordstr.strip()
-    if keywordstr[0] == '[':
-        # remove the left and right [] 
-        keywordstr = keywordstr[1:-1]
-    # here only strip the blank with strip newline is to compliant with
-    # c code
-    keywordstr = keywordstr.strip("[ \t]")
-    keywordstr = keywordstr.replace('\n','')
-    keywordstr = keywordstr.replace('\t','')
-    return keywordstr
 
 def parse_sqls(sqlstr):
     sqlstr = sqlstr.strip()
@@ -72,6 +61,62 @@ def parse_sqls(sqlstr):
         sqls.append(sqlstr[startpos:i].strip())
     return sqls
             
+def simple_parse_keywords(keywordstr):
+    keywordstr = keywordstr.strip()
+    if keywordstr[0] == '[':
+        # remove the left and right [] 
+        keywordstr = keywordstr[1:-1]
+    # here only strip the blank with strip newline is to compliant with
+    # c code
+    keywordstr = keywordstr.strip("[ \t]")
+    keywordstr = keywordstr.replace('\n','')
+    keywordstr = keywordstr.replace('\t','')
+    return keywordstr
+
+
+'''
+def parse_keywords(keywordstr)
+    keywords = []
+    startpos = 0
+    newstr = ''
+    inquora = False
+    for i in range(len(sqlstr)):
+        c = keywordstr[i]
+        if c == '\'' and inquora is False:
+            inquora = True
+            i = i+1
+
+        if c == '\'' and inquora is True:
+            inquora = False
+            i= i+1
+
+        if c == ';' and inquora is False:
+            newstr = keywordstr[startpos:i].strip()
+            # remove newlines
+            keywords.append(newstr)
+            i = i+1
+            startpos = i
+
+
+    keywords_list = self._testcase.keywords()
+    if len(keywords_list) == 0:
+        logger.info('There is Shell commands, continue SQL commands')
+    else:
+        xmlpath=os.path.abspath("keywords.xml")
+        dom = xml.dom.minidom.parse(xmlpath)
+        root = dom.documentElement
+        keywordslist = root.getElementsByTagName('operation')
+
+        for item in keywords_list:
+            item = item.split()
+            for keyword in keywordslist:
+                if keyword.getAttribute('keyword') == item[0]:
+                    func = keyword.getAttribute("script")
+                    item[0]=str(func)
+                    commands.append(item)
+    return commands
+'''
+
 
 # List of token names.
 tokens = [

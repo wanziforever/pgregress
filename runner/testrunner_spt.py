@@ -35,6 +35,8 @@ import time
 import logging
 import datetime
 import xml.dom.minidom
+import config
+import subprocess
 
 from exc import (
     WaitDataTimeoutException,
@@ -81,7 +83,7 @@ class TestRunner(object):
         self._errorsteps = {} # {step: errormsg}
 
     #def run(self, dry_run=False):
-    def run(self,case_type):
+    def run(self):
         """TestRunner execution interface, it will control the testcase
         running main procedure. it also can run a dry run.
 
@@ -103,27 +105,26 @@ class TestRunner(object):
         """
         self._testcase.build()
 
-       # if dry_run:
-        #    self._start_dry_run()
-         #   return
-
-        if case_type == 'python':
+        if self._testcase._keywords:
             self._start_exec_keywords()       
 
-        self._make_maint_session()
-        self._load_setup_sqls()
-        self._make_test_sessions()
+        if self._testcase._permutations:
+            self._make_maint_session()
+            self._load_setup_sqls()
+            self._make_test_sessions()
 
-        self._collect_backend_pids()
-        
-        self._start_permutations()
+            self._collect_backend_pids()
+            
+            self._start_permutations()
 
-        self._clear_test_sessions()
-        self._load_teardown_sqls()
-        self._clear_maint_session()
+            self._clear_test_sessions()
+            self._load_teardown_sqls()
+            self._clear_maint_session()
 
     def _start_exec_keywords(self):
        command_list = self._parse_keywords_list()
+       bin_path = os.path.join(config.installation, 'bin')
+       lib_path = os.path.join(config.installation, 'lib')
        if len(command_list) == 0:
            logger.info('There is Shell commands, continue SQL commands')
        else:
@@ -134,7 +135,14 @@ class TestRunner(object):
                while i<length:
                    exec_cmd = exec_cmd + cmd[i] + ' '
                    i = i+1
-               os.system(exec_cmd)    
+               env = {'LD_LIBRARY_PATH': lib_path,'PGHOME':bin_path,'PGPASSWORD':'highgo123'}
+               return_code = subprocess.check_call(exec_cmd,shell=True,
+                                                   #stdout=subprocess.PIPE,
+                                                   stdout=sys.stdout,
+                                                   stderr=subprocess.STDOUT)
+               if return_code !=0:
+                   logger.info('the shell command:%s is failed' % exec_cmd)
+                   exit(1)
 
     def _parse_keywords_list(self):
         commands = []
@@ -267,12 +275,10 @@ class TestRunner(object):
         print("Parsed test spec with %d sessions"
               % len(self._sessions.keys()))
         for steps in self._testcase.next_permutation_steps():
-            # print("ROUND %d START" % round_num)
             print()
             print("starting permutation: %s"
                   % " ".join([step.tag() for step in steps]))
             self._clear_tmp_data()
-            #self._load_setup_sqls()
             self._load_session_setup_sqls()
 
             logger.debug('LOADING PERMUTATION STEPS SQLS')
@@ -282,7 +288,6 @@ class TestRunner(object):
             self._final_complete_waiting_steps()
 
             self._load_session_teardown_sqls()
-            #self._load_teardown_sqls()
 
             round_num += 1
 
@@ -715,16 +720,12 @@ def usage():
 if __name__ == "__main__":
     import sys
     case_path = ''
-    if len(sys.argv) == 3:
-        case_path = sys.argv[2]
-        case_type = 'python'
-    elif len(sys.argv) == 2:
+    if len(sys.argv) == 2:
         case_path = sys.argv[1]
-        case_type = 'spec'
     else:
         usage()
         exit(1)
-    TestRunner(case_path).run(case_type)
+    TestRunner(case_path).run()
 
     '''
     # Maggie redefine this part, in the new code, the is_dry_run is abandoned

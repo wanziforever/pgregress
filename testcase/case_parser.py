@@ -41,7 +41,8 @@ def p_statement_expression(p):
     '''statement : keywords_statement setup_multiple teardown_multiple session_statement
                  | setup_multiple teardown_multiple session_statement
                  | statement session_statement
-                 | statement permutation_statement'''
+                 | statement permutation_statement
+                 | keywords_statement'''
 
     # here we handle statement setup is to different the setup in session
     if len(p) == 5:
@@ -60,7 +61,6 @@ def p_keywords_statement(p):
     '''keywords_statement : KEYWORD KEYWORDCLAUSE'''
     keywords_clause = p[2]
     keywords_list = keywords_clause.split(';')
-    #statements['keywords'] = keywords_list
     p[0] = keywords_list
 
 def p_empty(p):

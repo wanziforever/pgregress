@@ -75,7 +75,8 @@ class SuperApp(object):
             lib_path = get_installation_lib_path()
             logger.debug('DBServer::is_ready() bin: %s, lib: %s'
                          % (psql, lib_path))
-            env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
+            #env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
+            env = {'LD_LIBRARY_PATH': lib_path,'PGPASSWORD':'highgo123'}
             cmd = " ".join([
                 psql, '-U', str(config.user), '-p', str(_PORT), str(_DBNAME), '<', '/dev/null'
                 ])
@@ -192,11 +193,9 @@ class SuperApp(object):
 
         if test_mode == 'check':
             data_path = './tmp_instance/data'
-            #_LOG_PATH = './tmp_instance/log'
             self._make_PGServer(data_path)
         else:
             data_path = config.data_path
-            #_LOG_PATH = config.log_path
             self._check_DB_ready()
 
         if self.profile.use_schedule():

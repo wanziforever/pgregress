@@ -127,8 +127,10 @@ class DBServer(object):
         :type params: dict
         :param params: the parameters and values to change or add
         """
-        os.system('cp /home/sunhuihui/pgregress/utils/server*  /home/sunhuihui/pgregress/tmp_instance/data')
-        os.system('chmod 600 /home/sunhuihui/pgregress/tmp_instance/data/server*')
+        #os.system('cp /home/sunhuihui/pgregress/utils/server*  /home/sunhuihui/pgregress/tmp_instance/data')
+        os.system('cp ./utils/server*  %s'%data_path)
+        os.system('chmod 600 %s/server*'%data_path)
+        #os.system('chmod 600 /home/sunhuihui/pgregress/tmp_instance/data/server*')
         new_port = _PORT
         conf_file = os.path.join(data_path, 'postgresql.conf')
         for name, value in params.items():
@@ -217,9 +219,9 @@ class DBServer(object):
         try:
             os.kill(pid, 0)
         except OSError:
-            return pid, 'dead'
+            return 'dead'
         
-        return 1231, 'running'
+        return 'running'
     
     @staticmethod
     def start(data_path, log_path=None):
@@ -311,28 +313,13 @@ class DBServer(object):
             t = threading.Thread(target=capture_server_output,
                                  args=(child, "%s/postmaster.log"%log_path))
             t.start()
-
-        '''
-        check_all() cannot handle the output file
-        log_file = os.path.join(log_path,'postmaster.log')
-        try:
-            log = open(log_file,'ab')
-            child = subprocess.check_call(postgres_cmd,
-                         universal_newlines=True,
-                         env=env, 
-                         stdout=sys.stdout,
-                         stderr=sys.stderr)
-                         #stdout=log,
-                         #stderr=log)
-
-            time.sleep(0.2)
-            log.close()
-
-        except subprocess.CalledProcessError as e:
-            logger.info('stop DB fail')
-            logger.debug('stop DB faili with ',e.output)
-        '''
-
+        db_status = DBServer.get_postmaster_status(data_path)
+        if db_status == 'running':
+            logger.info('wait for 5s for DB stop!')
+            time.sleep(5)
+        elif db_status == 'dead':
+            logger.info('DB is stopped!')
+ 
 
     def is_ready(self):
         """whether PostgreSQL is accepting message
@@ -357,7 +344,6 @@ class DBServer(object):
         lib_path = get_installation_lib_path()
         logger.debug('DBServer::is_ready() bin: %s, lib: %s'
                      % (psql, lib_path))
-        #env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
         env = {'LD_LIBRARY_PATH': lib_path,'PGPASSWORD':'highgo123'}
         cmd = " ".join([
             psql, '-U', str(config.user), '-p', str(self._port), str(_DBNAME), '<', '/dev/null'
