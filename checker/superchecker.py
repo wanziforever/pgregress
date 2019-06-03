@@ -72,28 +72,33 @@ class SuperChk(object):
         print("result:", result)
         print("expect:", expected)
         
-        if not os.path.exists(expected):
-            return False
         if not os.path.exists(result):
+            logger.error('There is NO result file for ',case.name())
             return False
  
-        sed_command = "sed  -i \'/NOTICE:/,/Valied Until/d\' "+result
-        subprocess.check_call(sed_command,shell=True,
-                              stdout=sys.stdout,
-                              stderr=sys.stderr)
+        try:
+            sed_command = "sed -i \'/NOTICE:/,/Valied Until/d\'  %s"%result
+            res = subprocess.check_call(sed_command,shell=True,
+                                  stdout=sys.stdout,
+                                  stderr=sys.stderr)
+            if not os.path.exists(expected):
+                logger.error('there is NO expected file for ',case.name())
+                return False
 
-        os.system(sed_command)
+            complete = subprocess.run(['diff', expected, result],
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE)
 
-        complete = subprocess.run(['diff', expected, result],
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
-
-        if complete.returncode == 0:
-            self._report.add_case_info(case,'True','目标结果对比成功')
-            return True
-            
-        self._report.add_case_info(case,'False','目标结果对比错误')
-        return False
+            if complete.returncode == 0:
+                self._report.add_case_info(case,'True','目标结果对比成功')
+                return True
+                
+            else:
+                self._report.add_case_info(case,'False','目标结果对比错误')
+                return False
+        except subprocess.CalledProcessError as exc:
+            logger.info('clear the resutl file failed with ',exc.output)
+            exit(1)
 
     def _reportdata_gen(self,start_time,end_time):
         self._report.set_start_time(

@@ -105,10 +105,10 @@ class TestRunner(object):
         """
         self._testcase.build()
 
-        if self._testcase._keywords:
+        if len(self._testcase._keywords)!=0:
             self._start_exec_keywords()       
 
-        if self._testcase._permutations:
+        if len(self._testcase._sessions)!=0:
             self._make_maint_session()
             self._load_setup_sqls()
             self._make_test_sessions()
@@ -135,33 +135,30 @@ class TestRunner(object):
                while i<length:
                    exec_cmd = exec_cmd + cmd[i] + ' '
                    i = i+1
-               env = {'LD_LIBRARY_PATH': lib_path,'PGHOME':bin_path,'PGPASSWORD':'highgo123'}
-               return_code = subprocess.check_call(exec_cmd,shell=True,
-                                                   #stdout=subprocess.PIPE,
-                                                   stdout=sys.stdout,
-                                                   stderr=subprocess.STDOUT)
-               if return_code !=0:
+               #exec_cmd = exec_cmd + ' %s/outputs/logs/%s.log'%(os.path.dirname(self._testcase.path),self._testcase.name)
+               child = subprocess.run(exec_cmd,shell=True,
+                                      stdout=sys.stdout,
+                                      stderr=subprocess.STDOUT)
+               if child.returncode !=0:
                    logger.info('the shell command:%s is failed' % exec_cmd)
                    exit(1)
 
     def _parse_keywords_list(self):
         commands = []
         keywords_list = self._testcase.keywords()
-        if len(keywords_list) == 0:
-            logger.info('There is Shell commands, continue SQL commands')
-        else:
-            xmlpath=os.path.abspath("keywords.xml")
-            dom = xml.dom.minidom.parse(xmlpath)
-            root = dom.documentElement
-            keywordslist = root.getElementsByTagName('operation')
+
+        xmlpath=os.path.abspath("keywords.xml")
+        dom = xml.dom.minidom.parse(xmlpath)
+        root = dom.documentElement
+        operation_list = root.getElementsByTagName('operation')
      
-            for item in keywords_list:
-                item = item.split()
-                for keyword in keywordslist:
-                    if keyword.getAttribute('keyword') == item[0]:
-                        func = keyword.getAttribute("script")
-                        item[0]=str(func)
-                        commands.append(item)
+        for item in keywords_list:
+            item = item.split()
+            for operation in operation_list:
+                if operation.getAttribute('keyword') == item[0]:
+                    func = operation.getAttribute("script")
+                    item[0]=str(func)
+                    commands.append(item)
         return commands
 
     def _clear_tmp_data(self):

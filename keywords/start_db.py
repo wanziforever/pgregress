@@ -2,35 +2,48 @@ import sys
 import os
 import subprocess
 import time
+sys.path.append('.')
 import config
 
 lib_path = os.path.join(config.installation,'lib')
 bin_path = os.path.join(config.installation,'bin')
+
+
 postgres = os.path.join(bin_path,'postgres')
 
-def start_db(data_path):
+#def start_db(data_path='tmp_instance/data',log_file):
+def start_db(log_file,data_path='tmp_instance/data'):
     print('try to start DB......')
     env = {'LD_LIBRARY_PATH': lib_path}
-    os.system('cp server* /home/sunhuihui/data')
-    os.system('chmod 600 /home/sunhuihui/data/server*')
     start_cmd = [postgres, '-D', data_path, '-F', '-d', '5']
-    child = subprocess.Popen(start_cmd,
-                             universal_newlines=True,
-                             env=env, 
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT)
-    #out,err = child.communicate()
-    #print(out)
+    with open(log_file,'a+') as logfile:
+        child = subprocess.Popen(start_cmd,
+                                 universal_newlines=True,
+                                 env=env,stdout=logfile,
+                                 stderr=logfile)
 
-    time.sleep(1)
-     
-    if child.poll() == None:
-        print('DONE! returncode is:',child.returncode)
-    else:
-        print('FAILE! returncode is:',child.returncode)
-   
+        time.sleep(3)
+        if child.returncode == None:
+            print('SUCCESS! Start HighGo DB done')
+        else:
+            print('FAILE! Start HighGo DB fail, please check the log')
+
+
 '''
-def _start_db():
+   child = subprocess.Popen(start_cmd,
+                             universal_newlines=True,
+                             env=env,stdout=sys.stdout,
+                             stderr=sys.stdout)
+                             #env=env,stdout=logfile,
+                             #stderr=logfile)
+
+    time.sleep(3)
+    if child.returncode == None:
+        print('SUCCESS! Start HighGo DB done')
+    else:
+        print('FAILE! Start HighGo DB fail, please check the log')
+
+   def _start_db():
     print('try to start DB......')
     env = {'LD_LIBRARY_PATH': lib_path}
     os.system('cp server* /home/sunhuihui/data')
@@ -60,4 +73,11 @@ def _start_db():
         print('returncode is:',child.returncode)
         print('fail')
 '''
-start_db(sys.argv[1])
+
+
+if len(sys.argv) == 3:
+    start_db(sys.argv[1],sys.argv[2])
+elif len(sys.argv) == 2:
+    start_db(sys.argv[1])
+else:
+    start_db()

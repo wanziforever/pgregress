@@ -127,10 +127,8 @@ class DBServer(object):
         :type params: dict
         :param params: the parameters and values to change or add
         """
-        #os.system('cp /home/sunhuihui/pgregress/utils/server*  /home/sunhuihui/pgregress/tmp_instance/data')
         os.system('cp ./utils/server*  %s'%data_path)
         os.system('chmod 600 %s/server*'%data_path)
-        #os.system('chmod 600 /home/sunhuihui/pgregress/tmp_instance/data/server*')
         new_port = _PORT
         conf_file = os.path.join(data_path, 'postgresql.conf')
         for name, value in params.items():
