@@ -5,6 +5,7 @@ import logging
 import subprocess
 from report import ProfileReport
 from utils.file import create_directory
+logger = logging.getLogger('SuperChk')
 
 class SuperChk(object):
     """
@@ -74,17 +75,21 @@ class SuperChk(object):
         
         if not os.path.exists(result):
             logger.error('There is NO result file for ',case.name())
-            return False
  
         try:
             sed_command = "sed -i \'/NOTICE:/,/Valied Until/d\'  %s"%result
             res = subprocess.check_call(sed_command,shell=True,
                                   stdout=sys.stdout,
                                   stderr=sys.stderr)
-            if not os.path.exists(expected):
-                logger.error('there is NO expected file for ',case.name())
-                return False
+        except subprocess.CalledProcessError as exc:
+            logger.error('Handle the resutl file failed with ',exc.output)
+            #print('Handle the resutl file failed with ',exc.output)
 
+        if not os.path.exists(expected):
+            logger.error('there is NO expected file for ',case.name())
+            #print('there is NO expected file for ',case.name())
+
+        else:
             complete = subprocess.run(['diff', expected, result],
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
@@ -96,9 +101,6 @@ class SuperChk(object):
             else:
                 self._report.add_case_info(case,'False','目标结果对比错误')
                 return False
-        except subprocess.CalledProcessError as exc:
-            logger.info('clear the resutl file failed with ',exc.output)
-            exit(1)
 
     def _reportdata_gen(self,start_time,end_time):
         self._report.set_start_time(

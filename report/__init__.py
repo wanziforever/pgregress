@@ -10,6 +10,7 @@ def registe_report(name, report):
     PROFILE_REPORTS[name] = report
 
 def generate_report_html():
+    print('start to generate summary html report')
     templateLoader = jinja2.FileSystemLoader(searchpath="./report")
     templateEnv = jinja2.Environment(loader=templateLoader)
     TEMPLATE_FILE = "report_template.html"
@@ -18,10 +19,10 @@ def generate_report_html():
     content = template.render(reports=report_list)
     
     
-    with open(report_position+'report_summary.html', "w") as fd:
+    with open(report_position+'/report_summary.html', "w") as fd:
         fd.write(content)
 
-    print("test report summary was generated to %sreport_summary.html" %report_position)
+    print("The report summary was generated to %sreport_summary.html" %report_position)
 
 
 class ProfileReport(object):

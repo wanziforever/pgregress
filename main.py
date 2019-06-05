@@ -5,7 +5,6 @@ import time
 import os
 import importlib
 from profile import Profile
-#from checker import Checker
 import logging
 import xml.dom.minidom as xmldom
 import config
@@ -90,11 +89,9 @@ if __name__ == "__main__":
 
         try:
             app.run(sys.argv[1])
-            #chk._report_gen(app._start_time,app._end_time)
         except Exception as e:
             logger.error(str(e))
             logger.debug(traceback.format_exc())
         else:    
             logger.debug('Test Done!')
     generate_report_html()
-#    generate_report_text(txt_log)
