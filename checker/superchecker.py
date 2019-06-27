@@ -110,5 +110,5 @@ class SuperChk(object):
             end_time.strftime("%Y-%m-%d %H:%M:%S")
             )
         self._report._gen_statistic()
-        self._report.generate_report_html(self._report_html)
-        self._report.generate_report_text(self._report_txt)
+        #self._report.generate_report_html(self._report_html)
+        #self._report.generate_report_text(self._report_txt)

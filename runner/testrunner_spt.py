@@ -52,6 +52,46 @@ logger = logging.getLogger("TestRunner")
 STEP_NOBLOCK = 0x1
 STEP_RETRY = 0x2
 
+def parse_keywords_list(keywords_list):
+    '''
+    keywords_list: type:list,the shell commands block
+    '''
+    commands = []
+
+    xmlpath=os.path.abspath("keywords.xml")
+    dom = xml.dom.minidom.parse(xmlpath)
+    root = dom.documentElement
+    operation_list = root.getElementsByTagName('operation')
+ 
+    for item in keywords_list:
+        item = item.split()
+        for operation in operation_list:
+            if operation.getAttribute('keyword') == item[0]:
+                func = operation.getAttribute("script")
+                item[0]=str(func)
+                commands.append(item)
+    return commands
+
+def exec_keywords(keywords_list):
+    command_list = parse_keywords_list(keywords_list)
+    if len(command_list) == 0:
+        logger.info('There is no Shell commands, continue SQL commands')
+    else:
+        for cmd in command_list:
+            length = len(cmd)
+            i = 0
+            exec_cmd = 'python '
+            while i<length:
+                exec_cmd = exec_cmd + cmd[i] + ' '
+                i = i+1
+            child = subprocess.run(exec_cmd,shell=True,
+                                   stdout=sys.stdout,
+                                   stderr=subprocess.STDOUT)
+            if child.returncode !=0:
+                logger.info('the shell command:%s is failed' % exec_cmd)
+                exit(1)
+
+
 
 class TestRunner(object):
     """Test case running tool
@@ -106,7 +146,7 @@ class TestRunner(object):
         self._testcase.build()
 
         if len(self._testcase._keywords)!=0:
-            self._start_exec_keywords()       
+            exec_keywords(self._testcase.keywords())       
 
         if len(self._testcase._sessions)!=0:
             self._make_maint_session()
@@ -120,46 +160,6 @@ class TestRunner(object):
             self._clear_test_sessions()
             self._load_teardown_sqls()
             self._clear_maint_session()
-
-    def _start_exec_keywords(self):
-       command_list = self._parse_keywords_list()
-       bin_path = os.path.join(config.installation, 'bin')
-       lib_path = os.path.join(config.installation, 'lib')
-       if len(command_list) == 0:
-           logger.info('There is Shell commands, continue SQL commands')
-       else:
-           for cmd in command_list:
-               length = len(cmd)
-               i = 0
-               exec_cmd = 'python '
-               while i<length:
-                   exec_cmd = exec_cmd + cmd[i] + ' '
-                   i = i+1
-               #exec_cmd = exec_cmd + ' %s/outputs/logs/%s.log'%(os.path.dirname(self._testcase.path),self._testcase.name)
-               child = subprocess.run(exec_cmd,shell=True,
-                                      stdout=sys.stdout,
-                                      stderr=subprocess.STDOUT)
-               if child.returncode !=0:
-                   logger.info('the shell command:%s is failed' % exec_cmd)
-                   exit(1)
-
-    def _parse_keywords_list(self):
-        commands = []
-        keywords_list = self._testcase.keywords()
-
-        xmlpath=os.path.abspath("keywords.xml")
-        dom = xml.dom.minidom.parse(xmlpath)
-        root = dom.documentElement
-        operation_list = root.getElementsByTagName('operation')
-     
-        for item in keywords_list:
-            item = item.split()
-            for operation in operation_list:
-                if operation.getAttribute('keyword') == item[0]:
-                    func = operation.getAttribute("script")
-                    item[0]=str(func)
-                    commands.append(item)
-        return commands
 
     def _clear_tmp_data(self):
         self._waitings = []
@@ -280,7 +280,12 @@ class TestRunner(object):
 
             logger.debug('LOADING PERMUTATION STEPS SQLS')
             for step in steps:
-                self._run_step_sqls(step)
+                if step._session_tag == 'shell':
+                #for shell command, run linux commands
+                    print("step %s: %s" % (step.tag(), step.command()))
+                    exec_keywords(step._cmdlist) 
+                else:
+                    self._run_step_sqls(step)
 
             self._final_complete_waiting_steps()
 
@@ -600,8 +605,9 @@ class TestRunner(object):
         """kill the test related db connections
         """
         for tag, conn in self._sessions.items():
-            logger.debug("conn(%s) has been cleared" % tag)
-            conn.close()
+            if tag != 'shell':
+                logger.debug("conn(%s) has been cleared" % tag)
+                conn.close()
 
     def _clear_maint_session(self):
         """kill the maintainance related db connection
@@ -629,17 +635,20 @@ class TestRunner(object):
         tags = self._testcase.session_tags()
         import config
         for tag in tags:
-            self._sessions[tag] = PGConnectionManager.new_async_connection(
-                config.dbname, tag, 'highgo123',
-                config.host, config.port)
-            # the test session are all async connection, and there is no
-            # autocommit property, since the default is autocommit
-            # self._sessions[tag].autocommit(True)
-            self._sessions[tag].set_name(tag)
+            if tag == "shell":
+                self._sessions[tag] = tag
+            else:
+                self._sessions[tag] = PGConnectionManager.new_async_connection(
+                    config.dbname, tag, 'highgo123',
+                    config.host, config.port)
+                # the test session are all async connection, and there is no
+                # autocommit property, since the default is autocommit
+                # self._sessions[tag].autocommit(True)
+                self._sessions[tag].set_name(tag)
 
-            sql = "SET client_min_messages = warning;"
-            
-            self._sessions[tag].execute(sql)
+                sql = "SET client_min_messages = warning;"
+                
+                self._sessions[tag].execute(sql)
 
     def _collect_backend_pids(self):
         """get all the backend pid related to permutation sessions and
@@ -653,9 +662,10 @@ class TestRunner(object):
                 self._backend_pids.append(backendpid)
 
         for tag, conn in self._sessions.items():
-            backendpid = conn.get_backend_pid()
-            if backendpid:
-                self._backend_pids.append(backendpid)
+            if tag != 'shell':
+                backendpid = conn.get_backend_pid()
+                if backendpid:
+                    self._backend_pids.append(backendpid)
 
     def _report_error_message(self, step):
         """a error report method only report the target step error mssage

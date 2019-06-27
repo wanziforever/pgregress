@@ -16,7 +16,7 @@ import json
 import ply.yacc as yacc
 from .case_tokens import tokens
 
-from .modules import (SQLBlock, StepCmdModule, SessionModule, SetupModule,
+from .modules import (SQLBlock, StepModule, SessionModule, SetupModule,
                       TearDownModule, Permutation)
 
 #import logging
@@ -62,7 +62,6 @@ def p_keywords_statement(p):
     keywords_clause = p[2]
     keywords_list = keywords_clause.split(';')
     p[0] = keywords_list
-
 
 def p_empty(p):
     '''empty : '''
@@ -113,10 +112,13 @@ def p_teardown_statement_expression(p):
     p[0] = module
 
 def p_session_statement_expression(p):
-    '''session_statement : SESSION ID continue_steps_expression 
-                         | SESSION ID continue_commands_expression'''
+    '''session_statement : SESSION ID continue_steps_expression'''
     tag = p[2].strip('\"')
     session_module = SessionModule(tag)
+    #statements['sessions'][tag] = {
+    #    'steps': p[3]
+    #    }
+    #statements['session_sequence'].append(tag)
     session_steps = p[3]
     for step in session_steps:
         step.set_session(tag)
@@ -124,30 +126,16 @@ def p_session_statement_expression(p):
         
     statements['sessions'].append(session_module)
 
-def p_continue_commands_expression_cmdlock(p):
-    '''continue_commands_expression : continue_commands_expression command 
-                                    | command'''
-    if len(p) == 2:
-        p[0] = []
-        p[0].append(p[1])
-        
-    elif len(p) == 3:
-        tmp = p[1]
-        tmp.append(p[2])
-        p[0] = tmp
-        
-def p_commands_cmdblock(p):
-    '''command : COMMAND ID KEYWORDCLAUSE'''
-    tag = p[2].strip('\"')
-    module = StepCmdModule(tag)
-    module._cmdlist.append(p[3])
-    p[0] = module
-
 def p_session_statement_setup_expression(p):
     '''session_statement : SESSION ID setup_statement continue_steps_expression'''
     tag = p[2].strip('\"')
     session_module = SessionModule(tag)
     setup_module = p[3]
+    #statements['sessions'][tag] = {
+    #    'steps': p[4],
+    #    'setup': setup
+    #    }
+    #statements['session_sequence'].append(tag)
     session_steps = p[4]
     session_module.set_setup(setup_module)
     setup_module.set_session(tag)
@@ -202,7 +190,7 @@ def p_continue_steps_expression_sqlblock(p):
 def p_step_sqlblock(p):
     '''step : STEP ID SQLCLAUSE'''
     tag = p[2].strip('\"')
-    module = StepCmdModule(tag)
+    module = StepModule(tag)
     module.set_sql_block(SQLBlock(p[3]))
     p[0] = module
 

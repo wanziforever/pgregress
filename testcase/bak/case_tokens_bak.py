@@ -100,7 +100,7 @@ def parse_keywords(keywordstr)
 
     keywords_list = self._testcase.keywords()
     if len(keywords_list) == 0:
-        logger.info('There is no Shell commands, continue SQL commands')
+        logger.info('There is Shell commands, continue SQL commands')
     else:
         xmlpath=os.path.abspath("keywords.xml")
         dom = xml.dom.minidom.parse(xmlpath)
@@ -130,7 +130,6 @@ tokens = [
     'TEARDOWN',
     'SESSION',
     'STEP',
-    'COMMAND',
     #'QUOTE',
     'PERMUTATION',
     'ID',
@@ -148,7 +147,6 @@ t_TEARDOWN = r'teardown'
 t_SESSION = r'session'
 t_PERMUTATION = r'permutation'
 t_STEP = r'step'
-t_COMMAND = r'command'
 #t_QUOTE = r'"'
 t_ID = r'\"[a-zA-z0-9]+\"'
 #t_COMMENTS = r'\#[^\n\r]*'
@@ -225,3 +223,4 @@ step "s2f" { COMMIT; }
 #    tok = lexer.token()
 #    if not tok: break
 #    print(tok)
+

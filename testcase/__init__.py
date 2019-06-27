@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from .case_parser import parse_testcase_structure
-from .modules import (SQLBlock, StepModule, SessionModule, SetupModule,
+from .modules import (SQLBlock, StepCmdModule, SessionModule, SetupModule,
                       TearDownModule, Permutation)
 
 logger = logging.getLogger("TestCase")
@@ -262,8 +262,7 @@ class TestCase(object):
 
     def _permutation_tag_to_steps(self, permutation):
         """
-
-        :rtypes: list of :class:`testcase.module.StepModule`
+        :rtypes: list of :class:`testcase.module.StepCmdModule`
         :returns: list of steps and its session tag
         """
         results = []

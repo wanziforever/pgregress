@@ -33,7 +33,7 @@ class SQLBlock(object):
         return self._raw_sql
 
 
-class StepCmdModule(object):
+class StepModule(object):
     """define a class corresponsing to the testcase step section
 
     :type tag: str
@@ -44,12 +44,10 @@ class StepCmdModule(object):
         self._session_tag = None
         self._sqlblock = None
         self._sqlhelper = None
-        self._cmdlist = []
-
 
     def _build_sqlhelper(self):
         if self._sqlblock is None:
-            raise Exception("StepCmdModule::build_sqlhelper() no sqlblock set")
+            raise Exception("StepModule::build_sqlhelper() no sqlblock set")
         self._sqlhelper = SQLBlockExecutorHelper(self._sqlblock)
 
     def reset(self):
@@ -76,9 +74,6 @@ class StepCmdModule(object):
 
     def sql(self):
         return self._sqlblock
-
-    def command(self):
-        return self._cmdlist
 
     def raw_sql(self):
         return self._sqlblock.raw()
@@ -121,7 +116,7 @@ class SessionModule(object):
     def add_step(self, module):
         """add a step module for the session
 
-        :type module: :class:`StepCmdModule`
+        :type module: :class:`StepModule`
         :param module: the step will be added to the session
         """
         self._step_modules.append(module)
@@ -132,9 +127,8 @@ class SessionModule(object):
         if self._teardown_module:
             self._teardown_module.reset()
 
-        if self._tag != 'shell':
-            for step in self._step_modules:
-                step.reset()
+        for step in self._step_modules:
+            step.reset()
 
     def steps(self):
         return self._step_modules
