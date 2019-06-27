@@ -146,27 +146,44 @@ class DBServer(object):
         lib_path = get_installation_lib_path()
         logger.debug("DBServer::initDB() bin: %s, lib: %s"
                      % (initdb, lib_path))
-        '''
-        #env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
-        env = {'LD_LIBRARY_PATH': lib_path}
-        child = subprocess.run(
-            [initdb, '-D', data_path, '--no-clean', '--no-sync', '--no-locale'],
-            env=env, stdout=subprocess.PIPE,
-            universal_newlines=True,
-            stderr=subprocess.PIPE)
-        if child.returncode != 0:
-            logger.debug(child.args)
-            logger.debug(child.stdout)
-            logger.debug(child.stderr)
-            # logger.error(child.stderr)
-            #raise Exception(
-            #    "fail to do initdb for (%s)" % child.stderr
-            #    )
-        '''
         initdb_cmd = initdb + ' -D ' + data_path
         child = pexpect.spawn(initdb_cmd, encoding='utf-8')
         child.logfile = sys.stdout
         try:
+
+            child.expect('Enter new sysdba password:')
+            child.send('highgo123\n')
+            index = child.expect(['Enter it again:',
+                                  '再输入一遍:'])
+            if index == 0:
+                child.send('highgo123\n')
+            elif index == 1:
+                child.send('highgo123\n')
+
+            child.expect('Enter new syssao password:')
+            child.send('highgo123\n')
+            index = child.expect(['Enter it again:',
+                                  '再输入一遍:'])
+            if index == 0:
+                child.send('highgo123\n')
+            elif index == 1:
+                child.send('highgo123\n')
+
+            child.expect('Enter new syssso password:')
+            child.send('highgo123\n')
+            index = child.expect(['Enter it again:',
+                                  '再输入一遍:'])
+            if index == 0:
+                child.send('highgo123\n')
+            elif index == 1:
+                child.send('highgo123\n')
+
+            child.expect('Success')
+            child.close()
+            logger.debug(
+                'database initialize successfully under %s' % data_path
+                 )
+            '''
             child.expect('Enter new sysdba password:')
             child.send('highgo123\n')
             child.expect('Enter it again:')
@@ -187,6 +204,7 @@ class DBServer(object):
             logger.debug(
                 'database initialize successfully under %s' % data_path
                  )
+            '''
         except:
             child.close()
             logger.debug('database initialize fail:',str(child))
