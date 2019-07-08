@@ -281,7 +281,16 @@ class TestRunner(object):
             logger.debug('LOADING PERMUTATION STEPS SQLS')
             for step in steps:
                 if step._session_tag == 'shell':
-                #for shell command, run linux commands
+                    oldstep = self._complete_previous_steps(step)
+                    # _complete_previous_steps has possiblity to make some change of
+                    # current waiting list, and may make some waiting sessions to get
+                    # through, here need to release them
+                    if oldstep:
+                        # clear the old error step message to just monitor the very
+                        # recent step error message
+                        self._try_complete_waiting_steps(STEP_NOBLOCK | STEP_RETRY)
+                        self._report_multiple_error_messages(oldstep)
+                    #for shell command, run linux commands
                     print("step %s: %s" % (step.tag(), step.command()))
                     exec_keywords(step._cmdlist) 
                 else:

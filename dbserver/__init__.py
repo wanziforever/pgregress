@@ -144,10 +144,11 @@ class DBServer(object):
         bin_path = get_installation_bin_path()
         initdb = os.path.join(bin_path, 'initdb')
         lib_path = get_installation_lib_path()
+        env = {'LD_LIBRARY_PATH': lib_path}
         logger.debug("DBServer::initDB() bin: %s, lib: %s"
                      % (initdb, lib_path))
         initdb_cmd = initdb + ' -D ' + data_path
-        child = pexpect.spawn(initdb_cmd, encoding='utf-8')
+        child = pexpect.spawn(initdb_cmd, encoding='utf-8',env=env)
         child.logfile = sys.stdout
         try:
 
@@ -183,28 +184,6 @@ class DBServer(object):
             logger.debug(
                 'database initialize successfully under %s' % data_path
                  )
-            '''
-            child.expect('Enter new sysdba password:')
-            child.send('highgo123\n')
-            child.expect('Enter it again:')
-            child.send('highgo123\n')
-            
-            child.expect('Enter new syssao password:')
-            child.send('highgo123\n')
-            child.expect('Enter it again:')
-            child.send('highgo123\n')
-            
-            child.expect('Enter new syssso password:')
-            child.send('highgo123\n')
-            child.expect('Enter it again:')
-            child.send('highgo123\n')
-            
-            child.expect('Success')
-            child.close()
-            logger.debug(
-                'database initialize successfully under %s' % data_path
-                 )
-            '''
         except:
             child.close()
             logger.debug('database initialize fail:',str(child))
@@ -404,6 +383,8 @@ class DBServer(object):
         max_retry_times = 3
         while True:
             try:
+                os.system('cp %s/postgresql.conf /home/sunhuihui/'%data_path)
+                os.system('cp %s/pg_hba.conf /home/sunhuihui/'%data_path)
                 shutil.rmtree(data_path)
             except Exception as e:
                 print("fail to remove the directory %s for reason %s"

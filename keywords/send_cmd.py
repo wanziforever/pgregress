@@ -8,13 +8,10 @@ import config
 
 parser = argparse.ArgumentParser(description='Execute command on server.')
 parser.add_argument('command', help='the command will be executed.')
-#parser.add_argument('server', help='the server on which command will be executed.')
 parser.parse_args()
 
 bin_path = os.path.join(config.installation, 'bin')
 lib_path = os.path.join(config.installation, 'lib')
-#bin_path = '/home/sunhuihui/hgdb5/bin'
-#lib_path = '/home/sunhuihui/hgdb5/lib'
 
 my_path = os.environ.copy()
 my_path['PATH'] = '%s:'%bin_path + my_path['PATH']
@@ -29,10 +26,13 @@ output, errors = child.communicate()
 
 # the output from network or disks is byte, should decode() to str.
 # Or set niversal_newlines to TRUE,python will help to decode.
-output = output.decode()
+# On some OS, the type ofoutput is str, there is no need to decode,
+# so, add a judgement.
+if type(output) != str:
+    output = output.decode()
 print(output)
 
 if child.returncode != 0:
-    print('Exec command: \'%s\' fail' % cmd)
+    print('FAILE! Exec command: \'%s\' fail' % cmd)
 else:
-    print('Exec command: \'%s\' success' % cmd)
+    print('SUCCESS! Exec command: \'%s\' done' % cmd)

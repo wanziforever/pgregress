@@ -106,7 +106,7 @@ class SuperApp(object):
                             port=_PORT,
                             log_autovacuum_min_duration='0',
                             log_checkpoints='on',
-                            log_line_prefix="'%m [%p] %q%a '",
+                            #log_line_prefix="'%m [%p] %q%a '",
                             log_lock_waits = 'on',
                             log_temp_files = '128kB',
                             max_prepared_transactions = '2')

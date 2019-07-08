@@ -9,7 +9,7 @@
   <operation keyword="START_DB"  script="keywords/start_db.py" desc="restart the database instance">
     <arg desc="the directory of log">log_file</arg>
   </operation>
-  <operation keyword="SET_CONFIG" script="keywords/set_config.py" desc="set the property in configuration file">
+  <operation keyword="SET_CONFIG" script="keywords/set_value.py" desc="set the property in configuration file">
     <arg desc="file name going to configured">name</arg>
     <arg desc="variable name going to set">name</arg>
     <arg desc="value going to set">value</arg>
