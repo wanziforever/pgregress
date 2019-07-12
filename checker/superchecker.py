@@ -77,7 +77,8 @@ class SuperChk(object):
             logger.error('There is NO result file for ',case.name())
  
         try:
-            sed_command = "sed -i \'/NOTICE:/,/Valied Until/d\'  %s"%result
+            #sed_command = "sed -i \'/NOTICE:/,/Valied Until/d\'  %s"%result
+            sed_command = "sed -i '/Login User:/,/Valied Until/d'  %s"%result
             res = subprocess.check_call(sed_command,shell=True,
                                   stdout=sys.stdout,
                                   stderr=sys.stderr)

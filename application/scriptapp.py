@@ -87,6 +87,7 @@ class Application(SuperApp):
         for child in processes:
             child.wait()
 
+        time.sleep(2)
         diff_results = self.checker._make_many_diff(batch.tests())
         
         super()._end_batch_prompt(batch,diff_results)
@@ -139,6 +140,7 @@ class Application(SuperApp):
         t.start()
         child.wait()
 
+        time.sleep(2)
         diff_result = self.checker._make_diff(testcase)
 
         super()._end_testcase_prompt(testcase,diff_result)
