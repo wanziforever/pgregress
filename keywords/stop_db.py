@@ -6,15 +6,19 @@ sys.path.append('.')
 import os
 import time
 import config
+import logging
 
 lib_path = os.path.join(config.installation,'lib')
 bin_path = os.path.join(config.installation,'bin')
+_INSTALLDIR = config.installation
+logger = logging.getLogger('KeyWords')
+
 
 pg_ctl = os.path.join(bin_path,'pg_ctl')
 
 def stop_db(log_file,data_path='tmp_instance/data'):
     print('try to stop DB......\n')
-    env = {'LD_LIBRARY_PATH': lib_path}
+    env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
     stop_cmd = [pg_ctl,'-D',data_path,'stop','-m','immediate']
     try:
         with open(log_file,'a+') as logfile:

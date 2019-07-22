@@ -76,7 +76,7 @@ class SuperApp(object):
             logger.debug('DBServer::is_ready() bin: %s, lib: %s'
                          % (psql, lib_path))
             #env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
-            env = {'LD_LIBRARY_PATH': lib_path,'PGPASSWORD':'highgo123'}
+            env = {'LD_LIBRARY_PATH': lib_path,'PGPASSWORD':'highgo123','HG_BASE':_INSTALLDIR}
             cmd = " ".join([
                 psql, '-U', str(config.user), '-p', str(_PORT), str(_DBNAME), '<', '/dev/null'
                 ])

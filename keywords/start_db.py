@@ -6,16 +6,19 @@ import subprocess
 import time
 sys.path.append('.')
 import config
+import logging
 
 lib_path = os.path.join(config.installation,'lib')
 bin_path = os.path.join(config.installation,'bin')
+logger = logging.getLogger('KeyWords')
+_INSTALLDIR = config.installation
 
 
 pg_ctl = os.path.join(bin_path,'pg_ctl')
 
 def start_db(log_file,data_path='tmp_instance/data'):
     print('try to start DB......\n')
-    env = {'LD_LIBRARY_PATH': lib_path}
+    env = {'LD_LIBRARY_PATH': lib_path,'HG_BASE':_INSTALLDIR}
     start_cmd = [pg_ctl, '-D', data_path, 'start']
     try:
         with open(log_file,'a+') as logfile:
