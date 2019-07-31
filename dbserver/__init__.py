@@ -386,8 +386,8 @@ class DBServer(object):
         max_retry_times = 3
         while True:
             try:
-                os.system('cp %s/postgresql.conf /home/sunhuihui/'%data_path)
-                os.system('cp %s/pg_hba.conf /home/sunhuihui/'%data_path)
+                #os.system('cp %s/postgresql.conf /home/sunhuihui/'%data_path)
+                #os.system('cp %s/pg_hba.conf /home/sunhuihui/'%data_path)
                 shutil.rmtree(data_path)
             except Exception as e:
                 print("fail to remove the directory %s for reason %s"
