@@ -1,17 +1,18 @@
 host = '127.0.0.1'
 
-#config for safe version
+#CONFIG FOR SAFE VERSION
 #port = 5866
 #dbname = 'highgo'
 #user='sysdba'
 #password='highgo123'
 
-##config for enterprise version
+##CONFIG FOR ENTERPRISE VERSION
 #port = 5866
 #dbname = 'highgo'
 #user='sunhuihui'
+#password=''
 
-#config for offical PG
+#CONFIG FOR POSTGESQL
 port = 5432
 dbname = 'postgres'
 user='gitlab-runner'
