@@ -1,6 +1,6 @@
 host = '127.0.0.1'
 
-#CONFIG FOR SAFE VERSION
+##CONFIG FOR SAFE VERSION
 #port = 5866
 #dbname = 'highgo'
 #user='sysdba'
