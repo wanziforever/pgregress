@@ -18,9 +18,9 @@ dbname = 'postgres'
 user='gitlab-runner'
 password=''
 
-##the installation directory for enterprise database
+##INSTALLATION DIR FOR ENTERPRISE DB
 #installation='/opt/HighGoDB-5.6.4'
-##the installation directory for safe database
+##INSTALLATION DIR FOR SAFE DB
 installation='/home/gitlab-runner/HighGo'
 
 ##the directory of regression cases
