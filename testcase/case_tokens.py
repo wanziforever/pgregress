@@ -150,7 +150,7 @@ t_PERMUTATION = r'permutation'
 t_STEP = r'step'
 t_COMMAND = r'command'
 #t_QUOTE = r'"'
-t_ID = r'\"[a-zA-z0-9]+\"'
+t_ID = r'\"[a-zA-z0-9-]+\"'
 #t_COMMENTS = r'\#[^\n\r]*'
 
 # A regular expression rule with some action code

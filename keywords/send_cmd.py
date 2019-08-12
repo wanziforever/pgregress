@@ -28,8 +28,10 @@ output, errors = child.communicate()
 # Or set niversal_newlines to TRUE,python will help to decode.
 # On some OS, the type ofoutput is str, there is no need to decode,
 # so, add a judgement.
+# str-->bytes is encode
+# bytes-->str is decode
 if type(output) != str:
-    output = output.decode()
+    output = output.decode('utf-8','replace')
 print(output)
 
 if child.returncode != 0:
