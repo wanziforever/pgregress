@@ -1,2 +1,0 @@
-export PYTHONPATH="$PWD"
-export PATH=$PATH:/mnt/study/pg/installation/bin
