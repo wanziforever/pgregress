@@ -3,7 +3,7 @@ __pycache__
 *tmp*
 *.out
 *.log
-config.py
+/config.py
 
 /data/**/*
 !/data/offical/*

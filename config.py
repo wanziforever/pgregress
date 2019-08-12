@@ -1,27 +1,27 @@
 host = '127.0.0.1'
 
-##CONFIG FOR SAFE VERSION
+#config for safe version
 #port = 5866
 #dbname = 'highgo'
 #user='sysdba'
 #password='highgo123'
 
-##CONFIG FOR ENTERPRISE VERSION
-#port = 5866
-#dbname = 'highgo'
-#user='sunhuihui'
-#password=''
-
-#CONFIG FOR POSTGESQL
-port = 5432
-dbname = 'postgres'
+#config for enterprise version
+port = 5866
+dbname = 'highgo'
 user='gitlab-runner'
 password=''
 
-##INSTALLATION DIR FOR ENTERPRISE DB
-#installation='/opt/HighGoDB-5.6.4'
-##INSTALLATION DIR FOR SAFE DB
-installation='/home/gitlab-runner/HighGo'
+##config for offical PG
+#port = 5432
+#dbname = 'postgres'
+#user='gitlab-runner'
+#password=''
+
+##the installation directory for enterprise database
+installation='/opt/HighGoDB-5.6.4'
+##the installation directory for safe database
+#installation='/home/gitlab-runner/HighGo'
 
 ##the directory of regression cases
 testcases='/home/gitlab-runner/regression/'

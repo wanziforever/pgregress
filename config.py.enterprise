@@ -9,7 +9,7 @@ host = '127.0.0.1'
 #config for enterprise version
 port = 5866
 dbname = 'highgo'
-user='sunhuihui'
+user='gitlab-runner'
 password=''
 
 ##config for offical PG
@@ -18,10 +18,8 @@ password=''
 #user='gitlab-runner'
 #password=''
 
-##the installation directory for enterprise database
-#installation='/opt/HighGoDB-5.6.4'
-##the installation directory for safe database
-installation='/home/gitlab-runner/HighGo'
+##the installation directory for enterprise HGDB 
+installation='/opt/HighGoDB-5.6.4'
 
 ##the directory of regression cases
 testcases='/home/gitlab-runner/regression/'
