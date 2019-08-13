@@ -19,7 +19,7 @@ password='highgo123'
 #password=''
 
 ##the installation directory for safe HGDB
-#installation='/opt/HighGoDB-5.6.4'
+installation='/home/gitlab-runner/HighGo_safe'
 
 ##the directory of regression cases
 testcases='/home/gitlab-runner/regression/'
