@@ -4,7 +4,7 @@ host = '127.0.0.1'
 #port = 5866
 #dbname = 'highgo'
 #user='sysdba'
-#password='highgo123'
+#password='Highgo@123'
 
 #config for enterprise version
 port = 5866
