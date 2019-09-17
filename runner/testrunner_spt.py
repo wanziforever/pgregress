@@ -37,6 +37,7 @@ import datetime
 import xml.dom.minidom
 import config
 import subprocess
+from keywords import *
 
 from exc import (
     WaitDataTimeoutException,
@@ -648,7 +649,7 @@ class TestRunner(object):
                 self._sessions[tag] = tag
             else:
                 self._sessions[tag] = PGConnectionManager.new_async_connection(
-                    config.dbname, tag, 'highgo123',
+                    config.dbname, tag, 'Highgo@123',
                     config.host, config.port)
                 # the test session are all async connection, and there is no
                 # autocommit property, since the default is autocommit

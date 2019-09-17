@@ -153,31 +153,31 @@ class DBServer(object):
         try:
 
             child.expect('Enter new sysdba password:')
-            child.send('highgo123\n')
+            child.send('Highgo@123\n')
             index = child.expect(['Enter it again:',
                                   '再输入一遍:'])
             if index == 0:
-                child.send('highgo123\n')
+                child.send('Highgo@123\n')
             elif index == 1:
-                child.send('highgo123\n')
+                child.send('Highgo@123\n')
 
             child.expect('Enter new syssao password:')
-            child.send('highgo123\n')
+            child.send('Highgo@123\n')
             index = child.expect(['Enter it again:',
                                   '再输入一遍:'])
             if index == 0:
-                child.send('highgo123\n')
+                child.send('Highgo@123\n')
             elif index == 1:
-                child.send('highgo123\n')
+                child.send('Highgo@123\n')
 
             child.expect('Enter new syssso password:')
-            child.send('highgo123\n')
+            child.send('Highgo@123\n')
             index = child.expect(['Enter it again:',
                                   '再输入一遍:'])
             if index == 0:
-                child.send('highgo123\n')
+                child.send('Highgo@123\n')
             elif index == 1:
-                child.send('highgo123\n')
+                child.send('Highgo@123\n')
 
             child.expect('Success')
             child.close()
@@ -341,8 +341,8 @@ class DBServer(object):
         lib_path = get_installation_lib_path()
         logger.debug('DBServer::is_ready() bin: %s, lib: %s'
                      % (psql, lib_path))
-        #env = {'LD_LIBRARY_PATH': lib_path,'PGPASSWORD':'highgo123'}
-        env = {'LD_LIBRARY_PATH': lib_path,'PGPASSWORD':'highgo123','HG_BASE':_INSTALLDIR}
+        #env = {'LD_LIBRARY_PATH': lib_path,'PGPASSWORD':'Highgo@123'}
+        env = {'LD_LIBRARY_PATH': lib_path,'PGPASSWORD':'Highgo@123','HG_BASE':_INSTALLDIR}
         cmd = " ".join([
             psql, '-U', str(config.user), '-p', str(self._port), str(_DBNAME), '<', '/dev/null'
             ])
