@@ -1,5 +1,41 @@
 from utils.sql import parse_sqls
 from utils.connection import SQLBlockExecutorHelper
+import os
+import xml.dom.minidom
+
+class KeyWord(object):
+    """ define a keywords block words
+     
+    """
+    def __init__(self,words):
+        self._func_name = ''
+        self._param = ''
+        self._raw_keywords = words
+        self._parse_keywords()
+   
+    def _parse_keywords(self):
+        '''
+        words: type:string,one shell commands block
+        '''
+        print('KeyWord raw_keyword is ',self._raw_keywords)
+        keywords_list = self._raw_keywords.split(' ',1)
+        self._param = keywords_list[1].strip("'")
+    
+        xmlpath=os.path.abspath("keywords.xml")
+        dom = xml.dom.minidom.parse(xmlpath)
+        root = dom.documentElement
+        operation_list = root.getElementsByTagName('operation')
+
+        for operation in operation_list:
+            #print('keywords_list[0] is ',keywords_list[0])
+            #print('operation keyword is ',operation.getAttribute('keyword'))
+            if operation.getAttribute('keyword') == keywords_list[0]:
+                self._func_name = operation.getAttribute("function")
+    
+    def _raw(self):
+        return self._raw_keywords
+    def __repr__(self):
+        return('func_name=%s,param=%s'%(self._func_name,self._param))
 
 class SQLBlock(object):
     """define a whole sql block words
@@ -44,7 +80,8 @@ class StepCmdModule(object):
         self._session_tag = None
         self._sqlblock = None
         self._sqlhelper = None
-        self._cmdlist = []
+        #self._cmdlist = []
+        self._shellcmd = None
 
 
     def _build_sqlhelper(self):
@@ -55,6 +92,9 @@ class StepCmdModule(object):
     def reset(self):
         if self._sqlhelper:
             self._sqlhelper.reset()
+    
+    def build_shellcmd(self,keyword):
+        self._shellcmd = KeyWord(keyword)
 
     def set_sql_block(self, block):
         """set the step related sql block
@@ -78,7 +118,7 @@ class StepCmdModule(object):
         return self._sqlblock
 
     def command(self):
-        return self._cmdlist
+        return self._shellcmd
 
     def raw_sql(self):
         return self._sqlblock.raw()

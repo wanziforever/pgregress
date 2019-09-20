@@ -107,8 +107,8 @@ class TestRunner(object):
         #    self._start_dry_run()
          #   return
 
-        if case_type == 'python':
-            self._start_exec_keywords()       
+       # if case_type == 'python':
+       #     self._start_exec_keywords()       
 
         self._make_maint_session()
         self._make_test_sessions()
@@ -120,39 +120,39 @@ class TestRunner(object):
         self._clear_test_sessions()
         self._clear_maint_session()
 
-    def _start_exec_keywords(self):
-       command_list = self._parse_keywords_list()
-       if len(command_list) == 0:
-           print('no shell command, continue other test steps')
-       else:
-           for cmd in command_list:
-               length = len(cmd)
-               i = 0
-               exec_cmd = 'python '
-               while i<length:
-                   exec_cmd = exec_cmd + cmd[i] + ' '
-                   i = i+1
-               os.system(exec_cmd)    
+   # def _start_exec_keywords(self):
+   #    command_list = self._parse_keywords_list()
+   #    if len(command_list) == 0:
+   #        print('no shell command, continue other test steps')
+   #    else:
+   #        for cmd in command_list:
+   #            length = len(cmd)
+   #            i = 0
+   #            exec_cmd = 'python '
+   #            while i<length:
+   #                exec_cmd = exec_cmd + cmd[i] + ' '
+   #                i = i+1
+   #            os.system(exec_cmd)    
 
-    def _parse_keywords_list(self):
-        commands = []
-        keywords_list = self._testcase.keywords()
-        if len(keywords_list) == 0:
-            print('there is no shell commands')
-        else:
-            xmlpath=os.path.abspath("keywords.xml")
-            dom = xml.dom.minidom.parse(xmlpath)
-            root = dom.documentElement
-            keywordslist = root.getElementsByTagName('operation')
-     
-            for item in keywords_list:
-                item = item.split()
-                for keyword in keywordslist:
-                    if keyword.getAttribute('keyword') == item[0]:
-                        func = keyword.getAttribute("script")
-                        item[0]=str(func)
-                        commands.append(item)
-        return commands
+   # def _parse_keywords_list(self):
+   #     commands = []
+   #     keywords_list = self._testcase.keywords()
+   #     if len(keywords_list) == 0:
+   #         print('there is no shell commands')
+   #     else:
+   #         xmlpath=os.path.abspath("keywords.xml")
+   #         dom = xml.dom.minidom.parse(xmlpath)
+   #         root = dom.documentElement
+   #         keywordslist = root.getElementsByTagName('operation')
+   #  
+   #         for item in keywords_list:
+   #             item = item.split()
+   #             for keyword in keywordslist:
+   #                 if keyword.getAttribute('keyword') == item[0]:
+   #                     func = keyword.getAttribute("script")
+   #                     item[0]=str(func)
+   #                     commands.append(item)
+   #     return commands
 
     def _clear_tmp_data(self):
         self._waitings = []

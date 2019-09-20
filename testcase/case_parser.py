@@ -16,7 +16,7 @@ import json
 import ply.yacc as yacc
 from .case_tokens import tokens
 
-from .modules import (SQLBlock, StepCmdModule, SessionModule, SetupModule,
+from .modules import (KeyWord, SQLBlock, StepCmdModule, SessionModule, SetupModule,
                       TearDownModule, Permutation)
 
 #import logging
@@ -59,9 +59,13 @@ def p_statement_expression(p):
 
 def p_keywords_statement(p):
     '''keywords_statement : KEYWORD KEYWORDCLAUSE'''
+    modules =[]
     keywords_clause = p[2]
     keywords_list = keywords_clause.split(';')
-    p[0] = keywords_list
+    for keyword in keywords_list:
+        keyword_module = KeyWord(keyword)
+        modules.append(keyword_module)
+    p[0] = modules
 
 
 def p_empty(p):
@@ -140,7 +144,8 @@ def p_commands_cmdblock(p):
     '''command : COMMAND ID KEYWORDCLAUSE'''
     tag = p[2].strip('\"')
     module = StepCmdModule(tag)
-    module._cmdlist.append(p[3])
+    #module._cmdlist.append(p[3])
+    module.build_shellcmd(p[3])
     p[0] = module
 
 def p_session_statement_setup_expression(p):

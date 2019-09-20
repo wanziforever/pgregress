@@ -66,56 +66,13 @@ def simple_parse_keywords(keywordstr):
     if keywordstr[0] == '[':
         # remove the left and right [] 
         keywordstr = keywordstr[1:-1]
-    # here only strip the blank with strip newline is to compliant with
-    # c code
+    # here strip the blank and the last ; with strip() newline is to compliant with
     keywordstr = keywordstr.strip("[ \t]")
     keywordstr = keywordstr.replace('\n','')
     keywordstr = keywordstr.replace('\t','')
+    if keywordstr.endswith(';'):
+        keywordstr = keywordstr.strip(';')
     return keywordstr
-
-
-'''
-def parse_keywords(keywordstr)
-    keywords = []
-    startpos = 0
-    newstr = ''
-    inquora = False
-    for i in range(len(sqlstr)):
-        c = keywordstr[i]
-        if c == '\'' and inquora is False:
-            inquora = True
-            i = i+1
-
-        if c == '\'' and inquora is True:
-            inquora = False
-            i= i+1
-
-        if c == ';' and inquora is False:
-            newstr = keywordstr[startpos:i].strip()
-            # remove newlines
-            keywords.append(newstr)
-            i = i+1
-            startpos = i
-
-
-    keywords_list = self._testcase.keywords()
-    if len(keywords_list) == 0:
-        logger.info('There is no Shell commands, continue SQL commands')
-    else:
-        xmlpath=os.path.abspath("keywords.xml")
-        dom = xml.dom.minidom.parse(xmlpath)
-        root = dom.documentElement
-        keywordslist = root.getElementsByTagName('operation')
-
-        for item in keywords_list:
-            item = item.split()
-            for keyword in keywordslist:
-                if keyword.getAttribute('keyword') == item[0]:
-                    func = keyword.getAttribute("script")
-                    item[0]=str(func)
-                    commands.append(item)
-    return commands
-'''
 
 
 # List of token names.

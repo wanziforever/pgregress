@@ -153,31 +153,40 @@ class DBServer(object):
         try:
 
             child.expect('Enter new sysdba password:')
-            child.send('Highgo@123\n')
+            #child.send('Highgo@123\n')
+            child.sendline(config.password)
             index = child.expect(['Enter it again:',
                                   '再输入一遍:'])
             if index == 0:
-                child.send('Highgo@123\n')
+                #child.send('Highgo@123\n')
+                child.sendline(config.password)
             elif index == 1:
-                child.send('Highgo@123\n')
+                #child.send('Highgo@123\n')
+                child.sendline(config.password)
 
             child.expect('Enter new syssao password:')
-            child.send('Highgo@123\n')
+            #child.send('Highgo@123\n')
+            child.sendline(config.password)
             index = child.expect(['Enter it again:',
                                   '再输入一遍:'])
             if index == 0:
-                child.send('Highgo@123\n')
+                #child.send('Highgo@123\n')
+                child.sendline(config.password)
             elif index == 1:
-                child.send('Highgo@123\n')
+                #child.send('Highgo@123\n')
+                child.sendline(config.password)
 
             child.expect('Enter new syssso password:')
-            child.send('Highgo@123\n')
+            #child.send('Highgo@123\n')
+            child.sendline(config.password)
             index = child.expect(['Enter it again:',
                                   '再输入一遍:'])
             if index == 0:
-                child.send('Highgo@123\n')
+                #child.send('Highgo@123\n')
+                child.sendline(config.password)
             elif index == 1:
-                child.send('Highgo@123\n')
+                #child.send('Highgo@123\n')
+                child.sendline(config.password)
 
             child.expect('Success')
             child.close()
@@ -341,8 +350,8 @@ class DBServer(object):
         lib_path = get_installation_lib_path()
         logger.debug('DBServer::is_ready() bin: %s, lib: %s'
                      % (psql, lib_path))
-        #env = {'LD_LIBRARY_PATH': lib_path,'PGPASSWORD':'Highgo@123'}
-        env = {'LD_LIBRARY_PATH': lib_path,'PGPASSWORD':'Highgo@123','HG_BASE':_INSTALLDIR}
+        #env = {'LD_LIBRARY_PATH': lib_path,'PGPASSWORD':config.password}
+        env = {'LD_LIBRARY_PATH': lib_path,'PGPASSWORD': config.password,'HG_BASE':_INSTALLDIR}
         cmd = " ".join([
             psql, '-U', str(config.user), '-p', str(self._port), str(_DBNAME), '<', '/dev/null'
             ])
@@ -388,7 +397,8 @@ class DBServer(object):
             try:
                 #os.system('cp %s/postgresql.conf /home/sunhuihui/'%data_path)
                 #os.system('cp %s/pg_hba.conf /home/sunhuihui/'%data_path)
-                shutil.rmtree(data_path)
+                #shutil.rmtree(data_path)
+                shutil.move(data_path,'data.bak')
             except Exception as e:
                 print("fail to remove the directory %s for reason %s"
                       % (data_path, str(e)))

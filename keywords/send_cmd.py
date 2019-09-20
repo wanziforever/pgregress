@@ -16,7 +16,7 @@ lib_path = os.path.join(config.installation, 'lib')
 my_path = os.environ.copy()
 my_path['PATH'] = '%s:'%bin_path + my_path['PATH']
 my_path['LD_LIBRARY_PATH'] = lib_path
-my_path['PGPASSWORD'] = 'Highgo@123'
+my_path['PGPASSWORD'] = config.password
 cmd = sys.argv[1]
 child = subprocess.Popen(cmd,shell=True,
                           env=my_path,

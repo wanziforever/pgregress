@@ -53,44 +53,44 @@ logger = logging.getLogger("TestRunner")
 STEP_NOBLOCK = 0x1
 STEP_RETRY = 0x2
 
-def parse_keywords_list(keywords_list):
-    '''
-    keywords_list: type:list,the shell commands block
-    '''
-    commands = []
-
-    xmlpath=os.path.abspath("keywords.xml")
-    dom = xml.dom.minidom.parse(xmlpath)
-    root = dom.documentElement
-    operation_list = root.getElementsByTagName('operation')
- 
-    for item in keywords_list:
-        item = item.split()
-        for operation in operation_list:
-            if operation.getAttribute('keyword') == item[0]:
-                func = operation.getAttribute("script")
-                item[0]=str(func)
-                commands.append(item)
-    return commands
-
-def exec_keywords(keywords_list):
-    command_list = parse_keywords_list(keywords_list)
-    if len(command_list) == 0:
-        logger.info('There is no Shell commands, continue SQL commands')
-    else:
-        for cmd in command_list:
-            length = len(cmd)
-            i = 0
-            exec_cmd = 'python '
-            while i<length:
-                exec_cmd = exec_cmd + cmd[i] + ' '
-                i = i+1
-            child = subprocess.run(exec_cmd,shell=True,
-                                   stdout=sys.stdout,
-                                   stderr=subprocess.STDOUT)
-            if child.returncode !=0:
-                logger.info('the shell command:%s is failed' % exec_cmd)
-                exit(1)
+#def parse_keywords_list(keywords_list):
+#    '''
+#    keywords_list: type:list,the shell commands block
+#    '''
+#    commands = []
+#
+#    xmlpath=os.path.abspath("keywords.xml")
+#    dom = xml.dom.minidom.parse(xmlpath)
+#    root = dom.documentElement
+#    operation_list = root.getElementsByTagName('operation')
+# 
+#    for item in keywords_list:
+#        item = item.split()
+#        for operation in operation_list:
+#            if operation.getAttribute('keyword') == item[0]:
+#                func = operation.getAttribute("script")
+#                item[0]=str(func)
+#                commands.append(item)
+#    return commands
+#
+#def exec_keywords(keywords_list):
+#    command_list = parse_keywords_list(keywords_list)
+#    if len(command_list) == 0:
+#        logger.info('There is no Shell commands, continue SQL commands')
+#    else:
+#        for cmd in command_list:
+#            length = len(cmd)
+#            i = 0
+#            exec_cmd = 'python '
+#            while i<length:
+#                exec_cmd = exec_cmd + cmd[i] + ' '
+#                i = i+1
+#            child = subprocess.run(exec_cmd,shell=True,
+#                                   stdout=sys.stdout,
+#                                   stderr=subprocess.STDOUT)
+#            if child.returncode !=0:
+#                logger.info('the shell command:%s is failed' % exec_cmd)
+#                exit(1)
 
 
 
@@ -147,7 +147,8 @@ class TestRunner(object):
         self._testcase.build()
 
         if len(self._testcase._keywords)!=0:
-            exec_keywords(self._testcase.keywords())       
+        #    exec_keywords(self._testcase.keywords())       
+            self._run_all_keywords()     
 
         if len(self._testcase._sessions)!=0:
             self._make_maint_session()
@@ -161,6 +162,15 @@ class TestRunner(object):
             self._clear_test_sessions()
             self._load_teardown_sqls()
             self._clear_maint_session()
+
+    def _run_all_keywords(self):
+        for keyword in self._testcase.keywords():
+            self._run_one_keyword(keyword)
+        
+    def _run_one_keyword(self,keyword):
+        func_name = keyword._func_name
+        param = keyword._param
+        eval(func_name) (param)
 
     def _clear_tmp_data(self):
         self._waitings = []
@@ -293,7 +303,8 @@ class TestRunner(object):
                 #for shell command, run linux commands
                 if step._session_tag == 'shell':
                     print("step %s: %s" % (step.tag(), step.command()))
-                    exec_keywords(step._cmdlist) 
+                    #exec_keywords(step._cmdlist) 
+                    self._run_one_keyword(step._shellcmd) 
                 else:
                     self._run_step_sqls(step)
 
@@ -649,7 +660,7 @@ class TestRunner(object):
                 self._sessions[tag] = tag
             else:
                 self._sessions[tag] = PGConnectionManager.new_async_connection(
-                    config.dbname, tag, 'Highgo@123',
+                    config.dbname, tag, config.password,
                     config.host, config.port)
                 # the test session are all async connection, and there is no
                 # autocommit property, since the default is autocommit
